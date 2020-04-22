@@ -1,3 +1,5 @@
 Analysis_cache/*
 Analysis_files/*
 *.pdf
+*.swp
+.DS_Store

@@ -3,13 +3,15 @@ title: "Chloroquine concentration-fatality curve"
 author: "James Watson"
 date: "4/20/2020"
 output:
+  html_document:
+    df_print: paged
+    keep_md: yes
   pdf_document: default
-  html_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
-                      include = TRUE, echo = TRUE,
+                      include = TRUE, echo = TRUE, 
                       fig.width = 9, fig.height = 9,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
