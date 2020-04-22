@@ -483,7 +483,7 @@ c_names=c('600mg x2 (10d)',
           'Flat: malaria (3d)')
 
 # ****** 70 kilograms
-plot(density(log10(c_maxs_70[1,]),na.rm = T), lwd=lwds[1], ylim=c(0,3),yaxt='n',ylab='',
+plot(density(log10(c_maxs_70[1,]),na.rm = T), lwd=lwds[1], ylim=c(0,3),yaxt='n',ylab='Relative density',
      xlim=range(log10(c(1,100)),na.rm = T),lty=ltys[1],main = '', col=cols[1],
      xlab = expression('70kg adult whole blood chloroquine C'[max]*' ('*mu*'mol/L)'),xaxt='n')
 for(i in 2:length(fs)){
@@ -739,20 +739,35 @@ Make a Table of Results
 
 ```r
 eps = c(10,15,20)
+par(mfrow=c(3,1), las=1, familty='serif', bty='n')
+```
+
+```
+## Warning in par(mfrow = c(3, 1), las = 1, familty = "serif", bty = "n"):
+## "familty" is not a graphical parameter
+```
+
+```r
 for(ep in eps){
   threshold_results = array(dim=c(length(fs), length(weights)))
   colnames(threshold_results) = weights
   rownames(threshold_results) = c_names
   
   for(i in 1:length(fs)){
+    
     for(ws in weights){
-      
       j = which(ws==weights)
-      
       threshold_results[i,j] = round(100*mean(Cmax_pop[i,j,,q] > ep ,na.rm = T),1)
-      
+    }
+    if(i==1){
+      plot(weights, threshold_results[i, ], col=cols[i], lty=ltys[i], lwd=lwds[i],type='l',
+           xlab='Weight (kg)' , ylab = paste('Proportion (%) above', ep, 'umol/L'), panel.first = grid())
+      title(paste('Threshold value of',ep,'umol/L'))
+    } else {
+      lines(weights, threshold_results[i, ], col=cols[i], lty=ltys[i], lwd=lwds[i])
     }
   }
+  if(ep==10) legend('topright',legend = c_names,lty=ltys, inset=0.02,col=cols,lwd=lwds)
   print(threshold_results)
   write.csv(x = threshold_results, file = paste('threshold',ep,'.csv',sep=''))
 }
@@ -766,6 +781,9 @@ for(ep in eps){
 ## Weight-based (10d)  0.0  0.0  0.4  0.0  0.0  0.0  0.0 0.0 0.7 0.0 0.0
 ## Weight-based (7d)   0.0  0.0  0.0  0.0  0.0  0.0  0.0 0.0 0.0 0.0 0.0
 ## Flat: malaria (3d)  0.0  0.0  0.0  0.0  0.0  0.0  0.0 0.0 0.0 0.0 0.0
+```
+
+```
 ##                      40   45  50  55  60  65 70 75 80 85 90
 ## 600mg x2 (10d)     17.7 10.9 6.2 2.3 0.6 0.8  0  0  0  0  0
 ## Flat (10d)          0.0  0.0 0.0 0.0 0.0 0.0  0  0  0  0  0
@@ -773,6 +791,11 @@ for(ep in eps){
 ## Weight-based (10d)  0.0  0.0 0.0 0.0 0.0 0.0  0  0  0  0  0
 ## Weight-based (7d)   0.0  0.0 0.0 0.0 0.0 0.0  0  0  0  0  0
 ## Flat: malaria (3d)  0.0  0.0 0.0 0.0 0.0 0.0  0  0  0  0  0
+```
+
+![](Analysis_files/figure-html/above_thresholds-1.png)<!-- -->
+
+```
 ##                     40  45 50 55 60 65 70 75 80 85 90
 ## 600mg x2 (10d)     3.9 0.7  0  0  0  0  0  0  0  0  0
 ## Flat (10d)         0.0 0.0  0  0  0  0  0  0  0  0  0
