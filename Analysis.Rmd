@@ -15,428 +15,474 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       fig.width = 9, fig.height = 9,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
-
+library(knitr)
 library(gtools)
 library(rstan)
 library(RColorBrewer)
 RUN_MODELS=F
 ```
 
-## Data
+## Data from self-poisoning cohorts
 
-```{r cars}
+```{r pooled_data}
 pooled_data = read.csv('Pooled_data.csv')
+```
+
+#### Comparing retrospective and prospective dat
+
+We use simple logistic regression on admission concentrations to demonstrate significant differences between the retrospective and prospective data
+```{r retro_vs_pros}
+par(las=1, family='serif', bty='n')
+ind_pros = pooled_data$Prospective=='Yes'
+mod_pros = glm(Outcome ~ log(CQumolL_Admission), data = pooled_data[ind_pros,], family='binomial')
+mod_retro = glm(Outcome ~ log(CQumolL_Admission), data = pooled_data[!ind_pros,], family='binomial')
+summary(mod_pros)
+summary(mod_retro)
+coef(mod_pros)
+coef(mod_retro)
+
+plot(1:100, predict(mod_pros, newdata = data.frame(CQumolL_Admission=1:100),type='response'),type='l',
+     ylim=c(0,1),lwd=3, xlab='Chloroquine concentration (umol/L)',ylab='Probability of death')
+lines(1:100, predict(mod_retro, newdata = data.frame(CQumolL_Admission=1:100),type='response'),
+      col='blue',lwd=3,lty=2)
+legend('bottomright', lwd=3, legend = c('Prospective data','Retrospective data'),col=c(1,4),
+       inset=0.03, lty=1:2)
+```
+
+
+
+
+#### Estimating delta increase in those with observed peak
+
+We only use prospectively studied patients
+```{r}
+pooled_data = dplyr::filter(pooled_data, Prospective=='Yes')
+ind_increase = which(!is.na(pooled_data$CQumolL_Peak) &
+                       pooled_data$CQumolL_Peak>pooled_data$CQumolL_Admission)
+writeLines(sprintf('%s patients had their peak observed in hospital', length(ind_increase)))
+hist(log10(pooled_data$CQumolL_Peak[ind_increase])-
+       log10(pooled_data$CQumolL_Admission[ind_increase]), main='', xlab='delta: increase in log concentration in those who peaked at hospital')
 ```
 
 ## Stan model
 
 ```{r}
-if(RUN_MODELS){
-  logistic_model = '
+logistic_model = '
 data {
-   int<lower=0> N;
-   vector[N] x;
-   int<lower=0,upper=1> y[N];
+   int<lower=0> N_admission;
+   int<lower=0> N_peak;
+   vector[N_admission] log_conc_admission;
+   vector[N_peak] log_conc_peak;
+   int<lower=0,upper=1> y_admission[N_admission];
+   int<lower=0,upper=1> y_peak[N_peak];
+   // Prior parameters
+   real mean_alpha;
+   real sd_alpha;
+   real mean_beta;
+   real sd_beta;
 }
 parameters {
-   real alpha;
-   real beta;
+   real alpha; // Intercept term in logistic regression
+   real beta;  // Concentration coefficient in logistic regression
+   real<lower=0> delta; // Mean increase in chloroquine concentrations on the log scale
+   real<lower=0,upper=1> gamma; // Fraction of chloroquine in measured concentration
 }
 model {
-   alpha ~ normal(-9,5);
-   beta ~ normal(5,2);
-   y ~ bernoulli_logit(alpha + beta * x);
+  //Prior
+  alpha ~ normal(mean_alpha,sd_alpha);
+  beta ~ normal(mean_beta,sd_beta);
+  gamma ~ normal(0.7, 0.065);
+  delta ~ exponential(7.8);
+  // Likelihood
+  y_peak ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_peak)))));
+  y_admission ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_admission))) + delta));
 }
 '
-log_reg = stan_model(model_code = logistic_model)
-}
+if(RUN_MODELS) log_reg = stan_model(model_code = logistic_model)
 ```
 
-## Fit models
+## Fit main model to prospective data
 
 ```{r, include=FALSE}
+N_iter = 10^5
+N_thin = 140
+N_chains = 7
+options(mc.cores = N_chains)
+prior_params = list(mean_alpha = -15, sd_alpha=1, mean_beta=4, sd_beta=1)
+
+ind_increase = !is.na(pooled_data$CQumolL_Peak) & pooled_data$CQumolL_Peak>pooled_data$CQumolL_Admission
+CQ_data = list(N_admission = as.integer(sum(!ind_increase)),
+               N_peak = as.integer(sum(ind_increase)),
+               log_conc_admission = log(pooled_data$CQumolL_Admission[!ind_increase]),
+               log_conc_peak = log(pooled_data$CQumolL_Peak[ind_increase]),
+               y_admission = as.integer(pooled_data$Outcome[!ind_increase]),
+               y_peak = as.integer(pooled_data$Outcome[ind_increase]))
+
 if(RUN_MODELS){
-  options(mc.cores = 4)
-  ind_pros = pooled_data$Prospective=='Yes'
-  mod_prospect = sampling(log_reg,
-                          data=list(N=sum(ind_pros), 
-                                    x=log10(pooled_data$CQumolL_Admission[ind_pros]), 
-                                    y=as.integer(pooled_data$Outcome[ind_pros])),
-                          iter = 10^5, thin = 10^2, chains=4)
+  mod_full = sampling(log_reg,
+                      data=c(CQ_data, prior_params),
+                      iter = N_iter, thin = N_thin, chains= N_chains)
   
-  mod_retro = sampling(log_reg,
-                       data=list(N=sum(!ind_pros), 
-                                 x=log10(pooled_data$CQumolL_Admission[!ind_pros]), 
-                                 y=as.integer(pooled_data$Outcome[!ind_pros])),
-                       iter = 10^5, thin = 10^2, chains=4)
-  
-  ind_peak = !is.na(pooled_data$CQumolL_Peak)
-  mod_peak = sampling(log_reg,
-                      data=list(N=sum(ind_peak), 
-                                x=log10(pooled_data$CQumolL_Peak[ind_peak]), 
-                                y=as.integer(pooled_data$Outcome[ind_peak])),
-                      iter = 10^5, thin = 10^2, chains=4)
-  
-  mod_admission = sampling(log_reg,
-                           data=list(N=sum(ind_peak), 
-                                     x=log10(pooled_data$CQumolL_Admission[ind_peak]), 
-                                     y=as.integer(pooled_data$Outcome[ind_peak])),
-                           iter = 10^5, thin = 10^2, chains=4)
-  save(mod_admission,mod_peak,mod_retro,mod_prospect,file = 'out.stan')
-} else {
-  load('out.stan')
-}
-```
-
-```{r}
-thetas_prospect = extract(mod_prospect)
-thetas_retro = extract(mod_retro)
-thetas_peak = extract(mod_peak)
-thetas_ad = extract(mod_admission)
-
-xs=seq(0,2,length.out = 100)
-K_draws = dim(thetas_prospect$alpha)
-out_ad = out_peak = out_prospect = out_retro = array(dim = c(K_draws,100))
-for(i in 1:K_draws){
-  out_prospect[i, ] = inv.logit(thetas_prospect$alpha[i] + thetas_prospect$beta[i]*xs)
-  out_retro[i, ] = inv.logit(thetas_retro$alpha[i] + thetas_retro$beta[i]*xs)
-  out_peak[i, ] = inv.logit(thetas_peak$alpha[i] + thetas_peak$beta[i]*xs)
-  out_ad[i, ] = inv.logit(thetas_ad$alpha[i] + thetas_ad$beta[i]*xs)
+  save(mod_full, file = 'mod_full.stanout')
 }
 ```
 
 
-# Compare models 
+```{r priors_vs_posteriors}
+load('mod_full.stanout')
+thetas = extract(mod_full)
+par(mfrow=c(2,2),las=1, cex.lab=1.5)
+hist(thetas$alpha, freq = F,breaks = 50,main = '', xlab = expression(alpha), col = 'grey',
+     ylab='', yaxt='n')
+xs = seq(min(thetas$alpha), max(thetas$alpha), length.out=500)
+lines(xs, dnorm(xs, mean = prior_params$mean_alpha, sd = prior_params$sd_alpha), lwd=3, col='red')
+hist(thetas$beta,freq=F,breaks = 50,main = '', xlab = expression(beta), col = 'grey',
+     ylab='', yaxt='n')
+xs = seq(min(thetas$beta), max(thetas$beta), length.out=500)
+lines(xs, dnorm(xs, mean = prior_params$mean_beta, sd = prior_params$sd_beta), lwd=3, col='red')
 
-Retrospective versus prospective
-```{r retro_vs_pros}
-x_points = c(1,3,10,20,40,100)
+hist(thetas$delta, freq=F,breaks = 50,main = '', xlab = expression(delta), col = 'grey',
+     ylab='', yaxt='n')
+xs=seq(0,2,length.out = 2000); lines(xs, dexp(xs,rate=7.8),col='red',lwd=3)
 
-# Compare models: Admission concentration data versus peak concentration data
-par(las=1, family='serif')
-plot(xs, colMeans(out_retro), ylab='Probability of death', xlab='CQ whole blood (umol/L)', 
-     type='l',lwd=3,xaxt='n',col='red',ylim=c(0,1))
-lines(xs, colMeans(out_prospect), lty=2,lwd=3, col = 'blue')
-polygon(c(xs, rev(xs)), c(apply(out_retro,2,quantile, probs=0.025),
-                          rev(apply(out_retro,2,quantile, probs=0.975))),
-        col = adjustcolor('red',alpha.f = .3),border = NA)
-polygon(c(xs, rev(xs)), c(apply(out_prospect,2,quantile, probs=0.025),
-                          rev(apply(out_prospect,2,quantile, probs=0.975))),
-        col = adjustcolor('blue',alpha.f = .3),border = NA)
-lines(xs, colMeans(out_prospect), lty=2,lwd=3, col = 'blue')
-lines(xs, colMeans(out_retro), lwd=3, col = 'red')
+hist(thetas$gamma, freq=F,breaks = 50,main = '', xlab = expression(gamma), col = 'grey',
+     ylab='', yaxt='n')
+xs=seq(0,1,length.out = 500); lines(xs, dnorm(xs,mean=0.7, sd=0.065),col='red',lwd=3)
 
-axis(1, at=log10(x_points),labels = x_points)
-abline(h=c(0.05,.1,.2),lty=2,v=log10(20))
-legend('topleft',legend = c('Retrospective data','Prospective data'),
-       col=c('red','blue'),lwd=3, lty = 1:2,inset=0.03)
 ```
 
 
-Admission concentration data versus peak concentration data
-```{r admission_vs_peak}
-par(las=1, family='serif')
-plot(xs, colMeans(out_peak), ylab='Probability of death', xlab='CQ whole blood (umol/L)', 
-     type='l',lwd=3,xaxt='n',col='red', ylim=c(0,1))
-lines(xs, colMeans(out_ad), lty=2,lwd=3, col = 'blue')
-polygon(c(xs, rev(xs)), c(apply(out_peak,2,quantile, probs=0.025),
-                          rev(apply(out_peak,2,quantile, probs=0.975))),
-        col = adjustcolor('red',alpha.f = .3),border = NA)
-polygon(c(xs, rev(xs)), c(apply(out_ad,2,quantile, probs=0.025),
-                          rev(apply(out_ad,2,quantile, probs=0.975))),
-        col = adjustcolor('blue',alpha.f = .3),border = NA)
-lines(xs, colMeans(out_ad), lty=2,lwd=3, col = 'blue')
-lines(xs, colMeans(out_peak), lwd=3, col = 'red')
+```{r one_percent_mortality}
+K = length(thetas$alpha)
+OnePercent = array(dim=K)
+xs = seq(0, log(100), length.out = 200)
+Pred_mortality = array(dim=c(K, 200))
+for(k in 1:K){
+  OnePercent[k] = exp((logit(0.01) - thetas$alpha[k])/thetas$beta[k])
+  Pred_mortality[k, ] = inv.logit(thetas$alpha[k] + thetas$beta[k] * xs)
+}
 
-axis(1, at=log10(x_points),labels = x_points)
-axis(1, at = log10(c(1:10,seq(20,100,by=10))), labels = NA, tick = T)
-
-abline(h=c(0.05,.1,.2),lty=2,v=log10(20))
-legend('topleft',legend = c('Peak observed concentrations','Admission concentrations'),
-       col=c('red','blue'),lwd=3, lty = 1:2,inset=0.03)
+plot(density(OnePercent),xlab='Chloroquine concentration in whole blood (umol/L)', 
+     main = 'Concentration that gives 1% mortality', yaxt='n', ylab='', bty='n',lwd=3)
+abline(v=quantile(OnePercent, probs = c(0.025, 0.975)),lty=2)
+print(quantile(OnePercent, probs = c(0.025, 0.975)))
 ```
 
-## Final model
+# Pharmacokinetic models output
 
-This uses all prospective data and admission concentrations
-```{r}
-pooled_data = dplyr::filter(pooled_data, Prospective=='Yes')
-writeLines(sprintf('We have data on %s admission concentrations and outcomes',nrow(pooled_data)))
-```
-
-```{r CQ_PKPD_model}
-par(mfrow=c(2,1),las=1, cex.lab=1.5, cex.axis=1.5, family='serif')
-hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]), xlim = log10(c(1,100)),
-     main='', breaks = seq(-1.25,2,by=.25/2),ylab='Number of patients',
-     xaxt='n',xlab = expression(paste('Chloroquine concentration (',mu,'mol/L)')), 
-     col=adjustcolor('blue',alpha.f = .5))
-hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==1]), 
-     breaks = seq(1,2,by=.25/2), add=T, col=adjustcolor('red',alpha.f = .5))
-legend('topleft',  fill=adjustcolor(c('blue','red'),alpha.f = .5),
-       legend = c('Lived','Died'),inset=0.02, cex=1.5, bty='n',title = 'Outcome')
-axis(1, at=log10(x_points),labels = x_points)
-axis(1, at = log10(c(1:10,seq(20,100,by=10))), labels = NA, tick = T)
-
-plot(xs, colMeans(out_prospect), type = 'l', ylim = c(0,1),lwd=3, 
-     xlab = expression(paste('Chloroquine concentration (',mu,'mol/L)')), 
-     xlim = log10(c(1,100)),
-     ylab = 'Probability of death',xaxt='n')
-polygon(c(xs, rev(xs)), 
-        c(apply(out_prospect,2,quantile, probs=0.025),
-          rev(apply(out_prospect,2,quantile, probs=0.975))),
-        col = adjustcolor('grey',alpha.f = .4),border = NA)
-lines(xs, colMeans(out_prospect), type = 'l', ylim = c(0,1),lwd=3)
-axis(1, at=log10(x_points),labels = x_points)
-axis(1, at = log10(c(1:10,seq(20,100,by=10))), labels = NA, tick = T)
-
-abline(h=0.05, v=log10(20), lty=2)
-```
-
-
-## Couple with PK model of chloroquine
-
-Use Cmax values output by PK model of chloroquine.
-
-```{r}
+```{r compare_PK_models}
 load('Population_Cmax_values.RData')
-K_draws = length(thetas_prospect$alpha)
-fatality_rates = array(dim = c(length(fs), 11, K_draws))
-upperCI_fatality_rates =
-  lowerCI_fatality_rates =
-  mean_fatality_rates = 
-  array(dim = c(length(fs), 11))
+plasma_to_whole_blood_ratio = 3
+Weight_interested = 70
 
-c_maxs_40 = c_maxs_70 = array(dim = c(length(fs), 1000))
-weights = seq(40, 90, by = 5)
-q = 2
-# We do the malaria flat dosing first in order to then assess the fold increase in risk
-for(j in 1:length(weights)){
-  ws=weights[j]
-  cqs = Cmax_pop[6,j, ,q]
-  if(ws == 70) c_maxs_70[6,] = cqs
-  if(ws == 40) c_maxs_40[6,] = cqs
+# plasma model
+ind_plasma = grep(pattern = 'plasma', x = unlist(dimnames(Cmax_pop)[1]))
+# whole blood model
+ind_WB = grep(pattern = 'WB', x = unlist(dimnames(Cmax_pop)[1]))
+Cmax_pop[ind_plasma,,,] = Cmax_pop[ind_plasma,,,]*plasma_to_whole_blood_ratio
+cols = brewer.pal(8, name = 'Dark2')[c(2,4,5,7)]
+cols = c(cols[1], cols[2], cols[3],cols[1],cols[3],cols[4])
+cols=c(cols,cols)
+cnames = unlist(dimnames(Cmax_pop)[1])
+
+legend_names = c('310mg twice daily (10 days)','600mg twice daily (10 days)',
+                 '310mg twice daily (7 days)', 
+                 'Weight-based (10 days)','Weight-based (7 days)',
+                 'Malaria treatment (3 days)')
+
+par(mfrow=c(2,3),bty='n',las=1, family='serif')
+ws = grep(pattern = Weight_interested, x = unlist(dimnames(Cmax_pop)[2]))
+for(i in 1:length(ind_plasma)){
+  plot(density(Cmax_pop[ind_plasma[i],ws,,1]), main=legend_names[i], ylim=c(0,0.6),
+       xlab=expression(mu*'mol/L'), ylab='', yaxt='n', xlim=c(0,20),lwd=3)
+  lines(density(Cmax_pop[ind_WB[i],ws,,1]),col='red',lwd=3)
+  writeLines(sprintf('Median cmax for regimen %s is %s under whole blood model and %s under plasma model',
+                     cnames[i], round(median(Cmax_pop[ind_WB[i],ws,,1]),1),
+                     round(median(Cmax_pop[ind_plasma[i],ws,,1],1))))
+}
+legend('topright',title = paste('Cmax in',Weight_interested,'kg adult'), col=2:1, 
+       lwd=3, legend = c('Whole blood','Plasma'))
+for(i in 1:length(ind_plasma)){
+  qqplot(Cmax_pop[ind_WB[i],ws,,1], Cmax_pop[ind_plasma[i],ws,,1], main=cnames[i], 
+         xlab='Whole blood model', ylab='Plasma model', pch='.')
+  lines(0:100,0:100)
+}
+
+median_cmax = array(dim = c(dim(Cmax_pop)[1], dim(Cmax_pop)[2]))
+for(i in 1:dim(Cmax_pop)[1]){
+  for(j in 1:dim(Cmax_pop)[2]){
+    median_cmax[i,j] = median(Cmax_pop[i,j,,1])
+  }
+}
+par(mfrow=c(1,1),bty='n',las=1, family='serif')
+plot(seq(40,90, by=5), median_cmax[1,],type='l', ylim=range(median_cmax),xlab='weight', ylab='Median Cmax')
+for(i in 2:dim(Cmax_pop)[1]){
+  if(i > 6) lwds=3 else lwds = 1
+  lines(seq(40,90, by=5), median_cmax[i,], col=cols[i],lwd=lwds)
+}
+```
+
+
+
+
+```{r}
+q = 1
+uCI_mortality_per_thousand = 
+  lCI_mortality_per_thousand = 
+  mean_mortality_per_thousand = 
+  above_threshold = array(dim = c(dim(Cmax_pop)[1], 11))
+
+colnames(uCI_mortality_per_thousand)=
+  colnames(lCI_mortality_per_thousand)=
+  colnames(mean_mortality_per_thousand)=
+  colnames(above_threshold)= unlist(dimnames(Cmax_pop)[2])
+rownames(uCI_mortality_per_thousand)=
+  rownames(lCI_mortality_per_thousand)=
+  rownames(mean_mortality_per_thousand)=
+  rownames(above_threshold)= unlist(dimnames(Cmax_pop)[1])
+
+for(i in 1:dim(Cmax_pop)[1]){
+  Cmax_pop_fs = Cmax_pop[i,,,q]
+  above_one_percent = ps = array(dim=c(11,K))
   
-  for(k in 1:K_draws){
-    ps = inv.logit(thetas_prospect$alpha[k] + thetas_prospect$beta[k] * log10(cqs))
-    fatality_rates[6,j,k] = 100*mean(ps, na.rm=T)
-  }
-  mean_fatality_rates[6,j] = mean(fatality_rates[6,j,])
-  upperCI_fatality_rates[6,j] = quantile(fatality_rates[6,j,],probs=0.975)
-  lowerCI_fatality_rates[6,j] = quantile(fatality_rates[6,j,],probs=0.025)
-}
-
-fold_increase_risk = array(dim = c(length(fs)-1, 11, K_draws))
-upperCI_fold_increase =
-  lowerCI_fold_increase =
-  mean_fold_increase = 
-  array(dim = c(length(fs)-1, 11))
-for(i in 1:(length(fs)-1)){
-  for(j in 1:length(weights)){
-    ws=weights[j]
-    cqs = Cmax_pop[i,j, ,q]
-    if(ws == 70) c_maxs_70[i,] = cqs
-    if(ws == 40) c_maxs_40[i,] = cqs
-    
-    for(k in 1:K_draws){
-      ps = inv.logit(thetas_prospect$alpha[k] + thetas_prospect$beta[k] * log10(cqs))
-      fatality_rates[i,j,k] = 100*mean(ps, na.rm=T)
-      fold_increase_risk[i,j,k] = fatality_rates[i,j,k]/fatality_rates[6,j,k]
+  for(w in 1:11){
+    for(k in 1:K){
+      cqs = Cmax_pop_fs[w,]
+      cqs = cqs[!is.na(cqs)]
+      
+      danger_threshold = exp((logit(0.01)-thetas$alpha[k])/thetas$beta[k])
+      ind_above = cqs > danger_threshold
+      above_one_percent[w,k] = mean(ind_above)
+      
+      if(mean(ind_above)>0){
+        mean_mortality = mean(inv.logit(thetas$alpha[k] + 
+                                          thetas$beta[k]*log(cqs[ind_above])), na.rm=T)
+        ps[w,k] = mean_mortality * mean(ind_above)
+      } else {
+        ps[w,k] = 0
+      }
     }
-    mean_fatality_rates[i,j] = mean(fatality_rates[i,j,])
-    upperCI_fatality_rates[i,j] = quantile(fatality_rates[i,j,],probs=0.975)
-    lowerCI_fatality_rates[i,j] = quantile(fatality_rates[i,j,],probs=0.025)
-    
-    mean_fold_increase[i,j] = mean(fold_increase_risk[i,j,])
-    upperCI_fold_increase[i,j] = quantile(fold_increase_risk[i,j,],probs=0.975)
-    lowerCI_fold_increase[i,j] = quantile(fold_increase_risk[i,j,],probs=0.025)
   }
-}
-
-```
-
-Median concentration at 70 kgs
-```{r}
-for(i in 1:length(fs)){
-  j = which(weights==70)
-  writeLines(fs[i])
-  writeLines(as.character(round(median(Cmax_pop[i,j,,q], na.rm = T),1)))
+  above_threshold[i, ] = rowMeans(above_one_percent)*100
+  mean_mortality_per_thousand[i,] = rowMeans(ps)*1000
+  uCI_mortality_per_thousand[i,] = apply(ps,1,quantile,probs=0.975)*1000
+  lCI_mortality_per_thousand[i,] = apply(ps,1,quantile,probs=0.025)*1000
 }
 ```
 
-Absolute fatality predictions
-```{r}
-writeLines('Mean prediction\n')
-colnames(mean_fatality_rates) = weights
-rownames(mean_fatality_rates) = fs
-round(mean_fatality_rates,1)
 
-writeLines('\nLower CI prediction\n')
+Hoglund et al malaria patient whole blood model: predictions for Cmax greater than threshold and per thousand mortality
+```{r Fig2, fig.width=10, fig.height=9}
+# Set the indices to the simulations from the whole blood model
+ind_model = ind_WB
 
-colnames(lowerCI_fatality_rates) = weights
-rownames(lowerCI_fatality_rates) = fs
-round(lowerCI_fatality_rates,2)
+ltys = rep(c(1,1,1,2,2,1),2)
+lwds = c(rep(3,6), rep(2,6))
+tick_points = c(1:19,seq(20,100,by=10))
+x_points = c(2,3,5,10,13,20)
 
-writeLines('\nUpper CI prediction\n')
+par(las=1, bty='n', family = 'serif',cex.lab=1.5, cex.axis=1.5,mar=c(5,6,2,2))
+layout(mat = matrix(c(1,1,2,3), nrow = 2, byrow = T))
 
-colnames(upperCI_fatality_rates) = weights
-rownames(upperCI_fatality_rates) = fs
-round(upperCI_fatality_rates,2)
+plot(density(log(Cmax_pop[ind_model[1],ws,,q]),na.rm=T), xlim = log(c(2, 20)),ylab='',yaxt='n', 
+     xaxt='n', main='',col=cols[ind_model[1]],lwd=lwds[ind_model[1]], ylim=c(0,2.2),
+     xlab = expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')))
+for(i in ind_model[-1]){
+  lines(density(log(Cmax_pop[i,ws,,q]),na.rm=T), lwd=lwds[i],col=cols[i],lty=ltys[i])
+}
+axis(1, at=log(x_points),labels = x_points)
+axis(1, at = log(tick_points), labels = NA, tick = T)
+legend('topleft',legend = legend_names,bg = 'white',col=cols[ind_model],
+       lwd=2,inset=0.02,lty=ltys[ind_model],
+       title = paste('Cmax for', Weight_interested,'kg adult'))
+qs=quantile(OnePercent, probs = c(0.025,0.975))
+polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,10,10), 
+        col = adjustcolor('red',alpha.f = .2),border = NA)
+mtext(text = 'A',side = 3,cex=1.5,adj = 0)
+
+## Probability of being above threshold
+plot(seq(40,90,by=5), log10(above_threshold[ind_model[1], ]/100), type='l',main='',
+     ylim=c(-3,0),col=cols[ind_model[1]],lwd=lwds[ind_model[1]],
+     panel.first = grid(), xlab='Weight (kg)',yaxt='n',ylab='')
+for(i in ind_model[-1]){
+  ind = !is.infinite(log10(above_threshold[i, ]/100))
+  lines(seq(40,90,by=5)[ind], log10(above_threshold[i,ind]/100),lwd=lwds[i],col=cols[i],lty=ltys[i])
+}
+axis(2, at = -3:0, labels = 10^(-3:0))
+abline(h = -2, v=55, lty=2)
+mtext(text = 'Probability Cmax > 1% threshold',side = 2,line = 4.5,las=3,cex=1.5)
+mtext(text = 'B',side = 3,cex=1.5,adj = 0)
+
+
+## Probability of being above threshold
+plot(seq(40,90,by=5), mean_mortality_per_thousand[ind_model[1], ], type='l',main='',
+     col=cols[ind_model[1]],lwd=lwds[ind_model[1]],xlab='Weight (kg)',ylab='',
+     ylim=range(mean_mortality_per_thousand), panel.first = grid())
+for(i in ind_model[-1]){
+  lines(seq(40,90,by=5),  mean_mortality_per_thousand[i,],lwd=lwds[i],col=cols[i],lty=ltys[i])
+}
+legend('topright',col = cols[ind_model], title = 'Chloroquine regimen',
+       legend = legend_names, lwd=lwds[ind_model], lty=ltys[ind_model])
+mtext(text = 'Predicted mortality per thousand',side = 2,line = 4.5,las=3,cex=1.5)
+mtext(text = 'C',side = 3,cex=1.5,adj = 0)
 ```
 
-Relative fatality predictions
-```{r}
-writeLines('Mean relative increase in risk\n')
-colnames(mean_fold_increase) = weights
-rownames(mean_fold_increase) = fs[-6]
-round(mean_fold_increase,1)
-print(round(rowMeans(mean_fold_increase)))
 
-writeLines('\nLower CI prediction\n')
+```{r Fig1, fig.width=9, fig.height=9}
+x_points = c(1,3,10,20,100)
 
-colnames(lowerCI_fold_increase) = weights
-rownames(lowerCI_fold_increase) = fs[-6]
-round(lowerCI_fold_increase,2)
-print(round(rowMeans(lowerCI_fold_increase)))
-
-writeLines('\nUpper CI prediction\n')
-
-colnames(upperCI_fold_increase) = weights
-rownames(upperCI_fold_increase) = fs[-6]
-round(upperCI_fold_increase,2)
-print(round(rowMeans(upperCI_fold_increase)))
-
-```
-
-
-```{r Comparison_regimens}
-cols = brewer.pal(3, name = 'Dark2')
-cols = c(cols[1], rep(cols[2],4),cols[3])
-ltys = c(1,1,1,2,2,1)
-lwds = c(4,4,2,4,2,2)/2
-x_points = c(1,3,10,20,40,100)
-
-par(mfrow=c(2,2),las=1, cex.lab=1.2, cex.axis=1.2, family='serif',bty='n')
+par(mfrow=c(2,1),las=1, cex.lab=1.5, cex.axis=1.5, family='serif',bty='n',mar=c(5,6,2,2))
 hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]), xlim = log10(c(1,100)),
-     main='', breaks = seq(-1.25,2,by=.25/2),ylab='Number of patients',
-     xaxt='n',xlab = expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')),
+     main='', breaks = seq(-1.25,2,by=.25/2),ylab='',
+     xaxt='n',
+     xlab = expression(paste('Whole blood chloroquine+desethychloroquine concentration (',mu,'mol/L)')), 
      col=adjustcolor('blue',alpha.f = .5))
 hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==1]), 
-     breaks = seq(1,2,by=.25/2), add=T, col=adjustcolor('red',alpha.f = .5))
+     breaks = seq(-1,2,by=.25/2), add=T, col=adjustcolor('red',alpha.f = .5))
+mtext(text = 'Number of patients',side = 2,line = 4.5,las=3,cex=1.5)
 legend('topleft',  fill=adjustcolor(c('blue','red'),alpha.f = .5),
        legend = c('Lived','Died'),inset=0.02, cex=1.5, bty='n',title = 'Outcome')
 axis(1, at=log10(x_points),labels = x_points)
-axis(1, at = log10(c(1:10,seq(20,100,by=10))), labels = NA, tick = T)
-mtext(text = 'A', side = 3, adj = 0, cex = 1.5)
+axis(1, at = log10(tick_points), labels = NA, tick = T)
 
-
-plot(xs, colMeans(out_prospect), type = 'l', ylim = c(0,1),lwd=3, 
-     xlab = expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')), 
-     xlim = log10(c(1,100)),panel.first = grid(), 
-     ylab = 'Probability of death',xaxt='n')
+plot(xs, log10(colMeans(Pred_mortality)), type = 'l', ylim = c(-7,0),lwd=3, 
+     xlab = expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')), yaxt='n',
+     xlim = log(c(1,100)),ylab = '',xaxt='n',panel.first = grid())
+mtext(text = 'Probability of death',side = 2,line = 4.5,las=3,cex=1.5)
 polygon(c(xs, rev(xs)), 
-        c(apply(out_prospect,2,quantile, probs=0.025),
-          rev(apply(out_prospect,2,quantile, probs=0.975))),
+        log10(c(apply(Pred_mortality,2,quantile, probs=0.025),
+                rev(apply(Pred_mortality,2,quantile, probs=0.975)))),
         col = adjustcolor('grey',alpha.f = .4),border = NA)
-lines(xs, colMeans(out_prospect), type = 'l', ylim = c(0,1),lwd=3)
-axis(1, at=log10(x_points),labels = x_points)
-abline(h=c(0.01, 0.05), v=log10(c(10, 20)), lty=2)
-mtext(text = 'B', side = 3, adj = 0, cex = 1.5)
-axis(1, at = log10(c(1:10,seq(20,100,by=10))), labels = NA, tick = T)
-
-fs
-c_names=c('600mg x2 (10d)',
-          'Flat (10d)', 
-          'Flat (7d)',
-          'Weight-based (10d)',
-          'Weight-based (7d)',
-          'Flat: malaria (3d)')
-
-# ****** 70 kilograms
-plot(density(log10(c_maxs_70[1,]),na.rm = T), lwd=lwds[1], ylim=c(0,3),yaxt='n',ylab='Relative density',
-     xlim=range(log10(c(1,100)),na.rm = T),lty=ltys[1],main = '', col=cols[1],
-     xlab = expression('70kg adult whole blood chloroquine C'[max]*' ('*mu*'mol/L)'),xaxt='n')
-for(i in 2:length(fs)){
-  lines(density(log10(c_maxs_70[i, ]), na.rm = T), lty=ltys[i],lwd=lwds[i], col=cols[i])
+lines(xs, log10(colMeans(Pred_mortality)), lwd=3)
+axis(1, at=log(x_points),labels = x_points)
+axis(1, at = log(tick_points), labels = NA, tick = T)
+axis(2, at = -7:0, labels = 10^(-7:0))
+for(i in ind_model){
+  abline(v = log(quantile(Cmax_pop[i,ws,,2], probs = 0.99,na.rm=T)), col=cols[i],lwd=3,lty=ltys[i])
+  print(quantile(Cmax_pop[i,6,,1], probs = 0.99,na.rm=T))
 }
-axis(1, at=log10(x_points),labels = x_points)
-axis(1, at = log10(c(1:10,seq(20,100,by=10))), labels = NA, tick = T)
-mtext(text = 'C', side = 3, adj = 0, cex = 1.5)
-
-plot(weights, mean_fatality_rates[1,],type='l',lty=ltys[1], xlab='Weight (kg)',col=cols[1],
-     ylim = c(0,max(mean_fatality_rates)), panel.first = grid(), 
-     lwd=lwds[1], ylab=expression('Probability of death from C'[max]))
-for(i in 2:length(fs)){
-  lines(weights, mean_fatality_rates[i,],lwd=lwds[i],lty=ltys[i], col=cols[i])
-}
-
-legend('topright',legend = c_names,lty=ltys, inset=0.02,col=cols,lwd=lwds)
-mtext(text = 'D', side = 3, adj = 0, cex = 1.5)
+legend('bottomright',legend = legend_names,col=cols[ind_model],lwd=2,inset=0.02,lty=ltys,
+       title = paste('99 percentile of Cmax for',Weight_interested,'kg adult'))
+qs=quantile(OnePercent, probs = c(0.025,0.975))
+polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,1,1), col = adjustcolor('red',alpha.f = .2),border = NA)
 ```
 
-
-```{r relative_increase}
-par(las=1, family='serif')
-plot(weights, mean_fold_increase[1,],type='l',lty=ltys[1], xlab='Weight (kg)',col=cols[1],
-     ylim = c(0,max(mean_fold_increase)), panel.first = grid(), 
-     lwd=lwds[1], ylab=expression('Relative increase in toxicity from C'[max]))
-for(i in 2:(length(fs)-1)){
-  lines(weights, mean_fold_increase[i,],lwd=lwds[i],lty=ltys[i], col=cols[i])
-}
-abline(h= 1, lwd=3)
-legend('left',legend = c_names,lty=ltys, inset=0.02,col=cols,lwd=lwds)
-```
-
-
-
-Distribution of Cmax for the Brazil dosing regimen
+Mortality per thousand across the weight categories
 ```{r}
-for(ws in weights){
-  plot(density(log10(Cmax_pop[1, which(ws==weights),,q ]),na.rm = T), lwd=lwds[1], ylim=c(0,3),yaxt='n',ylab='',
-       xlim=range(log10(c(1,100)),na.rm = T),lty=ltys[1], col=cols[1],main=ws,
-       xlab = expression('whole blood chloroquine C'[max]*' ('*mu*'mol/L)'),xaxt='n')
-  writeLines(sprintf('At %s kg, %s%% of individuals will have Cmax greater than 15 for regimen %s', 
-                     ws,round(100*mean(Cmax_pop[1, which(ws==weights),,q ] > 15 ,na.rm = T),1), fs[1]))
-  writeLines(sprintf('At %s kg, %s%% of individuals will have Cmax greater than 10 for regimen %s', 
-                     ws,round(100*mean(Cmax_pop[1, which(ws==weights),,q ] > 10 ,na.rm = T),1), fs[1]))
-  for(i in 2:length(fs)){
-    lines(density(log10(Cmax_pop[i, which(ws==weights),,q ]), na.rm = T), 
-          lty=ltys[i],lwd=lwds[i], col=cols[i])
-    writeLines(sprintf('At %s kg, %s%% of individuals will have Cmax greater than 15 for regimen %s', 
-                       ws,round(100*mean(Cmax_pop[i, which(ws==weights),,q ] > 15 ,na.rm = T),1), fs[i]))
-    writeLines(sprintf('At %s kg, %s%% of individuals will have Cmax greater than 15 for regimen %s', 
-                       ws,round(100*mean(Cmax_pop[i, which(ws==weights),,q ] > 10 ,na.rm = T),1), fs[i]))
-  }
-  axis(1, at=log10(x_points),labels = x_points)
-  axis(1, at = log10(c(1:10,seq(20,100,by=10))), labels = NA, tick = T)
-}
+writeLines('Mean predicted mortality')
+knitr::kable(round(mean_mortality_per_thousand,1))
+writeLines('Upper 95 CI of predicted mortality')
+knitr::kable(round(uCI_mortality_per_thousand,1))
+writeLines('Lower 95 CI of predicted mortality')
+knitr::kable(round(lCI_mortality_per_thousand,1))
+
+writeLines('Proportion of Cmax above 10umol/L')
+knitr::kable(round(100*apply(Cmax_pop[,,,1] > 10, c(1,2), mean),1))
 ```
 
-Make a Table of Results
-```{r above_thresholds}
-eps = c(10,15,20)
-par(mfrow=c(3,1), las=1, familty='serif', bty='n')
-for(ep in eps){
-  threshold_results = array(dim=c(length(fs), length(weights)))
-  colnames(threshold_results) = weights
-  rownames(threshold_results) = c_names
-  
-  for(i in 1:length(fs)){
-    
-    for(ws in weights){
-      j = which(ws==weights)
-      threshold_results[i,j] = round(100*mean(Cmax_pop[i,j,,q] > ep ,na.rm = T),1)
-    }
-    if(i==1){
-      plot(weights, threshold_results[i, ], col=cols[i], lty=ltys[i], lwd=lwds[i],type='l',
-           xlab='Weight (kg)' , ylab = paste('Proportion (%) above', ep, 'umol/L'), panel.first = grid())
-      title(paste('Threshold value of',ep,'umol/L'))
-    } else {
-      lines(weights, threshold_results[i, ], col=cols[i], lty=ltys[i], lwd=lwds[i])
-    }
-  }
-  if(ep==10) legend('topright',legend = c_names,lty=ltys, inset=0.02,col=cols,lwd=lwds)
-  print(threshold_results)
-  write.csv(x = threshold_results, file = paste('threshold',ep,'.csv',sep=''))
-}
+
+## Supplmentary: Plasma PK model predictionsm
+
+```{r}
+writeLines(sprintf('Using a blood to plasma ratio of %s', plasma_to_whole_blood_ratio))
 ```
 
+
+Healthy volunteer model based on plasma measurements: predictions for Cmax greater than threshold and per thousand mortality
+```{r S_Fig2, fig.width=10, fig.height=9}
+# Set the indices to the simulations from the whole blood model
+ind_model = ind_plasma
+
+ltys = rep(c(1,1,1,2,2,1),2)
+lwds = c(rep(3,6), rep(2,6))
+tick_points = c(1:19,seq(20,100,by=10))
+x_points = c(2,3,5,10,13,20)
+legend_names = c('310mg daily (10 days)','600mg twice daily (10 days)',
+                 '310mg daily (7 days)', 
+                 'Weight-based (10 days)','Weight-based (7 days)',
+                 'Malaria treatment (3 days)')
+par(las=1, bty='n', family = 'serif',cex.lab=1.5, cex.axis=1.5,mar=c(5,6,2,2))
+layout(mat = matrix(c(1,1,2,3), nrow = 2, byrow = T))
+
+plot(density(log(Cmax_pop[ind_model[1],ws,,q]),na.rm=T), xlim = log(c(1, 20)),ylab='',yaxt='n', 
+     xaxt='n', main='',col=cols[ind_model[1]],lwd=lwds[ind_model[1]], ylim=c(0,2.7),
+     xlab = expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')))
+for(i in ind_model[-1]){
+  lines(density(log(Cmax_pop[i,ws,,q]),na.rm=T), lwd=lwds[i],col=cols[i],lty=ltys[i])
+}
+axis(1, at=log(x_points),labels = x_points)
+axis(1, at = log(tick_points), labels = NA, tick = T)
+legend('topleft',legend = legend_names,bg = 'white',col=cols[ind_model],
+       lwd=2,inset=0.02,lty=ltys[ind_model],
+       title = paste('Cmax for', Weight_interested,'kg adult'))
+qs=quantile(OnePercent, probs = c(0.025,0.975))
+polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,10,10), 
+        col = adjustcolor('red',alpha.f = .2),border = NA)
+mtext(text = 'A',side = 3,cex=1.5,adj = 0)
+
+## Probability of being above threshold
+plot(seq(40,90,by=5), log10(above_threshold[ind_model[1], ]/100), type='l',main='',
+     ylim=c(-3,0),col=cols[ind_model[1]],lwd=lwds[ind_model[1]],
+     panel.first = grid(), xlab='Weight (kg)',yaxt='n',ylab='')
+for(i in ind_model[-1]){
+  ind = !is.infinite(log10(above_threshold[i, ]/100))
+  lines(seq(40,90,by=5)[ind], log10(above_threshold[i,ind]/100),lwd=lwds[i],col=cols[i],lty=ltys[i])
+}
+axis(2, at = -3:0, labels = 10^(-3:0))
+abline(h = -2, v=55, lty=2)
+mtext(text = 'Probability Cmax > 1% threshold',side = 2,line = 4.5,las=3,cex=1.5)
+mtext(text = 'B',side = 3,cex=1.5,adj = 0)
+
+
+## Probability of being above threshold
+plot(seq(40,90,by=5), mean_mortality_per_thousand[ind_model[1], ], type='l',main='',
+     col=cols[ind_model[1]],lwd=lwds[ind_model[1]],xlab='Weight (kg)',ylab='',
+     ylim=range(mean_mortality_per_thousand),panel.first = grid())
+for(i in ind_model[-1]){
+  lines(seq(40,90,by=5),  mean_mortality_per_thousand[i,],lwd=lwds[i],col=cols[i],lty=ltys[i])
+}
+legend('topright',col = cols[ind_model], title = 'Chloroquine regimen',
+       legend = legend_names, lwd=lwds[ind_model], lty=ltys[ind_model])
+mtext(text = 'Predicted mortality per thousand',side = 2,line = 4.5,las=3,cex=1.5)
+mtext(text = 'C',side = 3,cex=1.5,adj = 0)
+```
+
+
+```{r S_Fig1, fig.width=9, fig.height=9}
+x_points = c(1,3,10,20,100)
+
+par(mfrow=c(2,1),las=1, cex.lab=1.5, cex.axis=1.5, family='serif',bty='n',mar=c(5,6,2,2))
+hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]), xlim = log10(c(1,100)),
+     main='', breaks = seq(-1.25,2,by=.25/2),ylab='',
+     xaxt='n',
+     xlab = expression(paste('Whole blood chloroquine+desethychloroquine concentration (',mu,'mol/L)')), 
+     col=adjustcolor('blue',alpha.f = .5))
+hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==1]), 
+     breaks = seq(-1,2,by=.25/2), add=T, col=adjustcolor('red',alpha.f = .5))
+mtext(text = 'Number of patients',side = 2,line = 4.5,las=3,cex=1.5)
+legend('topleft',  fill=adjustcolor(c('blue','red'),alpha.f = .5),
+       legend = c('Lived','Died'),inset=0.02, cex=1.5, bty='n',title = 'Outcome')
+axis(1, at=log10(x_points),labels = x_points)
+axis(1, at = log10(tick_points), labels = NA, tick = T)
+
+plot(xs, log10(colMeans(Pred_mortality)), type = 'l', ylim = c(-7,0),lwd=3, 
+     xlab = expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')), yaxt='n',
+     xlim = log(c(1,100)),ylab = '',xaxt='n',panel.first = grid())
+mtext(text = 'Probability of death',side = 2,line = 4.5,las=3,cex=1.5)
+polygon(c(xs, rev(xs)), 
+        log10(c(apply(Pred_mortality,2,quantile, probs=0.025),
+                rev(apply(Pred_mortality,2,quantile, probs=0.975)))),
+        col = adjustcolor('grey',alpha.f = .4),border = NA)
+lines(xs, log10(colMeans(Pred_mortality)), lwd=3)
+axis(1, at=log(x_points),labels = x_points)
+axis(1, at = log(tick_points), labels = NA, tick = T)
+axis(2, at = -7:0, labels = 10^(-7:0))
+for(i in ind_model){
+  abline(v = log(quantile(Cmax_pop[i,ws,,2], probs = 0.99,na.rm=T)), col=cols[i],lwd=3,lty=ltys[i])
+  print(quantile(Cmax_pop[i,6,,1], probs = 0.99,na.rm=T))
+}
+legend('bottomright',legend = legend_names,col=cols[ind_model],lwd=2,inset=0.02,lty=ltys,
+       title = paste('99 percentile of Cmax for', Weight_interested,'kg adult'))
+qs=quantile(OnePercent, probs = c(0.025,0.975))
+polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,1,1), col = adjustcolor('red',alpha.f = .2),border = NA)
+```
