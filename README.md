@@ -6,6 +6,12 @@ First it fits a Bayesian logistic regression model to pooled patient data from s
 
 Second, it uses output Cmax distributions from one of two population pharmacokinetic models (written and fitted in NONMEM) to estimate the risk of fatal overdose under a set of chloroquine treatment regimens (5 regimens for COVID-19 and one malaria regimen).
 
+## Main Result
+
+Pooled data from self-poisoning cohorts in France (top panel) and the estimated relationship between peak chloroquine concentrations and death (bottom panel)
+
+![](Analysis_files/figure-html/Fig1-1.png)
+
 ## Sensitivity to PK model
 
 We use two PK models, one estimated from data in malaria patients, and one estimated from data in healthy volunteers. The PK profiles are expected to be approximately the same in malaria and non-malaria.
