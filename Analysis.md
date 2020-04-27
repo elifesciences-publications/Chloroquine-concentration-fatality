@@ -13,6 +13,8 @@ output:
 
 ## Data from self-poisoning cohorts
 
+Data from Riou were extracted from published graph (see Figure 3 in NEJM Riou et al, 1988) using WebPlotDigitiser
+
 
 ```r
 pooled_data = read.csv('Pooled_data.csv')
@@ -106,7 +108,8 @@ coef(mod_retro)
 
 ```r
 plot(1:100, predict(mod_pros, newdata = data.frame(CQumolL_Admission=1:100),type='response'),type='l',
-     ylim=c(0,1),lwd=3, xlab='Chloroquine concentration (umol/L)',ylab='Probability of death')
+     ylim=c(0,1),lwd=3, xlab='Chloroquine concentration (umol/L)',
+      ylab='Probability of death', panel.first=grid())
 lines(1:100, predict(mod_retro, newdata = data.frame(CQumolL_Admission=1:100),type='response'),
       col='blue',lwd=3,lty=2)
 legend('bottomright', lwd=3, legend = c('Prospective data','Retrospective data'),col=c(1,4),
@@ -120,7 +123,8 @@ legend('bottomright', lwd=3, legend = c('Prospective data','Retrospective data')
 
 #### Estimating delta increase in those with observed peak
 
-We only use prospectively studied patients
+We only use prospectively studied patients - the retrospectively studied patients have quite a different concentration-fatality profile.
+
 
 ```r
 pooled_data = dplyr::filter(pooled_data, Prospective=='Yes')
@@ -168,8 +172,8 @@ model {
   //Prior
   alpha ~ normal(mean_alpha,sd_alpha);
   beta ~ normal(mean_beta,sd_beta);
-  gamma ~ normal(0.7, 0.065);
-  delta ~ exponential(7.8);
+  gamma ~ normal(0.7, 0.065); // Prior is estimated from a large CQ&DCQ dataset
+  delta ~ exponential(7.8); // rate parameter estimated from the observed peak vs admission
   // Likelihood
   y_peak ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_peak)))));
   y_admission ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_admission))) + delta));
@@ -241,8 +245,6 @@ print(quantile(OnePercent, probs = c(0.025, 0.975)))
 
 ```r
 load('Population_Cmax_values.RData')
-plasma_to_whole_blood_ratio = 3
-Weight_interested = 70
 
 # plasma model
 ind_plasma = grep(pattern = 'plasma', x = unlist(dimnames(Cmax_pop)[1]))
@@ -610,7 +612,7 @@ MORU_BW7_plasma          0.0    0.0    0.0    0.1    0.0    0.0    0.0    0.0   
 Malaria_flat_plasma      0.3    0.3    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0
 
 
-## Supplmentary: Plasma PK model predictionsm
+## Supplementary: Plasma PK model predictionsm
 
 
 ```r
