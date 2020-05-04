@@ -187,7 +187,7 @@ ind_plasma = grep(pattern = 'plasma', x = unlist(dimnames(Cmax_pop)[1]))
 # whole blood model
 ind_WB = grep(pattern = 'WB', x = unlist(dimnames(Cmax_pop)[1]))
 Cmax_pop[ind_plasma,,,] = Cmax_pop[ind_plasma,,,]*plasma_to_whole_blood_ratio
-cols = brewer.pal(8, name = 'Dark2')[c(2,4,5,7)]
+cols = brewer.pal(8, name = 'Dark2')[c(6,4,7,8)]
 cols = c(cols[1], cols[2], cols[3],cols[1],cols[3],cols[4])
 cols=c(cols,cols)
 cnames = unlist(dimnames(Cmax_pop)[1])
