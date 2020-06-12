@@ -19,7 +19,7 @@ library(knitr)
 library(gtools)
 library(rstan)
 library(RColorBrewer)
-RUN_MODELS=T
+RUN_MODELS=F
 ```
 
 Show R version and package versions
@@ -302,7 +302,7 @@ writeLines(sprintf('At 3umol/L the median increase in QRS is %s (95%% CI is %s -
 
 
 ```{r priors_vs_posteriors_QRS}
-par(mfrow=c(3,3),las=1, cex.lab=1.5)
+par(mfrow=c(3,3),las=1, cex.lab=1)
 hist(thetas$max_effect, freq = F,breaks = 50,main = '', 
      xlab = 'Emax QRS (msec)', col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$max_effect), max(thetas$max_effect), length.out=500)
@@ -318,12 +318,12 @@ lines(xs, dnorm(xs, mean = prior_params$min_effect_prior_mu,
 hist(thetas$bias_term,freq=F,breaks = 50,main = '', xlab = 'Bias term (Clemessy, msec)', 
      col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$bias_term), max(thetas$bias_term), length.out=500)
-lines(xs, dnorm(xs, mean = -20, sd = 10), lwd=3, col='red')
+lines(xs, dnorm(xs, mean = prior_params$bias_term_prior_mu, sd = prior_params$bias_term_prior_sd), lwd=3, col='red')
 
 hist(thetas$ed50, freq=F,breaks = 50,main = '', xlab = 'ED_50 (log_10 concentration)', col = 'grey',
      ylab='', yaxt='n')
 xs=seq(0,2,length.out = 2000); 
-lines(xs, dnorm(xs,mean = prior_params$ed50_mu,sd = 1),col='red',lwd=3)
+lines(xs, dnorm(xs,mean = prior_params$ed50_mu,sd = prior_params$ed50_sd),col='red',lwd=3)
 
 hist(thetas$log_slope, freq=F,breaks = 50,main = '', xlab = 'Slope coefficient (on log scale)', 
      col = 'grey',ylab='', yaxt='n')
@@ -335,22 +335,21 @@ lines(xs, dnorm(xs,mean = prior_params$log_slope_prior_mu,sd = prior_params$log_
 hist(thetas$mu_normal, freq=F,breaks = 50,main = '', 
      xlab = 'Decrease for steady state QRS (msec)', col = 'grey', ylab='', yaxt='n')
 xs=seq(0,10,length.out = 500); 
-lines(xs, dnorm(xs,mean = 5,sd = 1),col='red',lwd=3)
+lines(xs, dnorm(xs,mean = prior_params$mu_normal_mean,sd = prior_params$mu_normal_sd),col='red',lwd=3)
 
 hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma self-poisoning', 
      col = 'grey',ylab='', yaxt='n')
 xs=seq(0,50,length.out = 500); 
-lines(xs, dnorm(xs,mean=25, sd=5),col='red',lwd=3)
+lines(xs, dnorm(xs,mean = 25, sd = 5),col='red',lwd=3)
 
 hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
      col = 'grey',  ylab='', yaxt='n')
-lines(xs, dnorm(xs,mean=2, sd=1),col='red',lwd=3)
-
+lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
 
 hist(thetas$sigma_i, freq=F,breaks = 50,main = '', 
      xlab = 'Inter-individual sigma (healthy volunteers)', col = 'grey',
      ylab='', yaxt='n')
-lines(xs, dexp(xs,rate = 0.2),col='red',lwd=3)
+lines(xs, dexp(xs,rate = prior_params$sigma_i_prior),col='red',lwd=3)
 ```
 
 

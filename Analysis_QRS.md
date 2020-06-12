@@ -1,7 +1,7 @@
 ---
-title: "Chloroquine concentration-fatality curve"
+title: "Chloroquine concentration-dependent QRS widening"
 author: "James Watson"
-date: "4/20/2020"
+date: "6/12/2020"
 output:
   html_document:
     df_print: paged
@@ -10,6 +10,54 @@ output:
 ---
 
 
+
+Show R version and package versions
+
+```r
+sessionInfo()
+```
+
+```
+## R version 4.0.0 (2020-04-24)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.2
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+## [1] RColorBrewer_1.1-2 rstan_2.19.3       ggplot2_3.3.0      StanHeaders_2.19.2
+## [5] gtools_3.8.2       knitr_1.28        
+## 
+## loaded via a namespace (and not attached):
+##  [1] Rcpp_1.0.4.6       pillar_1.4.4       compiler_4.0.0     prettyunits_1.1.1 
+##  [5] tools_4.0.0        digest_0.6.25      pkgbuild_1.0.8     evaluate_0.14     
+##  [9] lifecycle_0.2.0    tibble_3.0.1       gtable_0.3.0       pkgconfig_2.0.3   
+## [13] rlang_0.4.6        cli_2.0.2          parallel_4.0.0     yaml_2.2.1        
+## [17] xfun_0.13          loo_2.2.0          gridExtra_2.3      withr_2.2.0       
+## [21] stringr_1.4.0      dplyr_0.8.5        vctrs_0.3.0        stats4_4.0.0      
+## [25] grid_4.0.0         tidyselect_1.1.0   glue_1.4.1         inline_0.3.15     
+## [29] R6_2.4.1           processx_3.4.2     fansi_0.4.1        rmarkdown_2.1     
+## [33] purrr_0.3.4        callr_3.4.3        magrittr_1.5       matrixStats_0.56.0
+## [37] ps_1.3.3           scales_1.1.1       ellipsis_0.3.1     htmltools_0.4.0   
+## [41] assertthat_0.2.1   colorspace_1.4-1   stringi_1.4.6      munsell_0.5.0     
+## [45] crayon_1.3.4
+```
+
+Important parameters for the analysis/visualisation
+
+```r
+#****** Parameters for the analysis *******
+plasma_to_whole_blood_ratio = 4 # conversion from plasma to whole blood for the healthy volunteer concentration data
+Weight_interested = 70 # displays results for chosen weight - has to be multiple of 5 and between 40 and 90!
+```
 
 ## Data from self-poisoning cohorts and healthy volunteers
 
@@ -20,16 +68,18 @@ Data from Riou were extracted from published graph (see Figure 3 in NEJM Riou et
 pooled_data = read.csv('Pooled_QRS_data.csv')
 
 # do the conversion from plasma to whole blood for the healthy volunteers
+# study = 1 is self-poisoning
+# study = 2 is healthy volunteers
 pooled_data$CQ_uMol[pooled_data$study==2] =
   pooled_data$CQ_uMol[pooled_data$study==2]*plasma_to_whole_blood_ratio
 ```
 
 
 ```r
+# some nice colors for the plots
 col_study = RColorBrewer::brewer.pal(n = 3, name = 'Set1')[c(1,3)]
 
 ind_clem = pooled_data$study==1
-
 # jitter the self-poisoning QRS data
 ys = rep(0, nrow(pooled_data)); ys[ind_clem] = rnorm(sum(ind_clem),mean = 0,sd = 1)
 
@@ -75,12 +125,18 @@ data {
   
   // prior parameters
   real ed50_mu;
+  real ed50_sd;
   real max_effect_prior_mu;
   real max_effect_prior_sd;
   real min_effect_prior_mu;
   real min_effect_prior_sd;
   real log_slope_prior_mu;
   real log_slope_prior_sd;
+  real bias_term_prior_mu;
+  real bias_term_prior_sd;
+  real mu_normal_mean;
+  real mu_normal_sd;
+  real sigma_i_prior;
 }
 
 parameters {
@@ -98,15 +154,15 @@ parameters {
 
 model {
   // Prior
-  bias_term ~ normal(-20,10);
+  bias_term ~ normal(bias_term_prior_mu,bias_term_prior_sd);
   log_slope ~ normal(log_slope_prior_mu, log_slope_prior_sd);
-  ed50 ~ normal(ed50_mu, 1);
+  ed50 ~ normal(ed50_mu, ed50_sd);
   max_effect ~ normal(max_effect_prior_mu,max_effect_prior_sd);
   min_effect ~ normal(min_effect_prior_mu,min_effect_prior_sd);
   mu_i ~ normal(0,sigma_i);
-  mu_normal ~ normal(5,1);
+  mu_normal ~ normal(mu_normal_mean,mu_normal_sd);
   
-  sigma_i ~ exponential(0.2); // prior standard deviation is +/- 5 msec of IIV
+  sigma_i ~ exponential(sigma_i_prior); // prior standard deviation is +/- 5 msec of IIV
   sigma1 ~ normal(25,5);
   sigma2 ~ normal(2,1);
   
@@ -135,14 +191,20 @@ if(RUN_MODELS) conc_QRS_mod = stan_model(model_code = Conc_QRS_Emax)
 N_iter = 10^5
 N_thin = 100
 N_chains = 8
-#options(mc.cores = N_chains)
+#options(mc.cores = N_chains) - broken in current R version!
 prior_params = list(max_effect_prior_mu = 180,
                     max_effect_prior_sd = 10, 
                     min_effect_prior_mu = 90,
                     min_effect_prior_sd = 4,
-                    log_slope_prior_mu = 0,
-                    log_slope_prior_sd = 5,
-                    ed50_mu = 1)
+                    log_slope_prior_mu = 1,
+                    log_slope_prior_sd = 1,
+                    ed50_mu = 1.3, 
+                    ed50_sd = 1,
+                    bias_term_prior_mu = -20,
+                    bias_term_prior_sd = 5,
+                    mu_normal_mean = 3,
+                    mu_normal_sd = 1,
+                    sigma_i_prior = 0.2)
 
 # QRS values above 200 are not physiologically possible so we truncate at 200
 pooled_data$QRS[pooled_data$QRS > 200] = 200
@@ -263,7 +325,7 @@ quantile(thetas$mu_normal, probs = c(0.025,.5,0.975))
 
 ```
 ##     2.5%      50%    97.5% 
-## 2.296903 3.446759 4.607770
+## 1.622899 2.792322 3.915087
 ```
 
 Increase in QRS at 3 umol/L
@@ -286,13 +348,13 @@ writeLines(sprintf('At 3umol/L the median increase in QRS is %s (95%% CI is %s -
 ```
 
 ```
-## At 3umol/L the median increase in QRS is 6.9 (95% CI is 5.8 - 8)
+## At 3umol/L the median increase in QRS is 6.6 (95% CI is 5.5 - 7.8)
 ```
 
 
 
 ```r
-par(mfrow=c(3,3),las=1, cex.lab=1.5)
+par(mfrow=c(3,3),las=1, cex.lab=1)
 hist(thetas$max_effect, freq = F,breaks = 50,main = '', 
      xlab = 'Emax QRS (msec)', col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$max_effect), max(thetas$max_effect), length.out=500)
@@ -308,32 +370,38 @@ lines(xs, dnorm(xs, mean = prior_params$min_effect_prior_mu,
 hist(thetas$bias_term,freq=F,breaks = 50,main = '', xlab = 'Bias term (Clemessy, msec)', 
      col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$bias_term), max(thetas$bias_term), length.out=500)
-lines(xs, dnorm(xs, mean = -20, sd = 10), lwd=3, col='red')
+lines(xs, dnorm(xs, mean = prior_params$bias_term_prior_mu, sd = prior_params$bias_term_prior_sd), lwd=3, col='red')
 
-hist(thetas$ed50, freq=F,breaks = 50,main = '', xlab = 'ED_50', col = 'grey',
+hist(thetas$ed50, freq=F,breaks = 50,main = '', xlab = 'ED_50 (log_10 concentration)', col = 'grey',
      ylab='', yaxt='n')
 xs=seq(0,2,length.out = 2000); 
-lines(xs, dnorm(xs,mean = prior_params$ed50_mu,sd = 1),col='red',lwd=3)
+lines(xs, dnorm(xs,mean = prior_params$ed50_mu,sd = prior_params$ed50_sd),col='red',lwd=3)
+
+hist(thetas$log_slope, freq=F,breaks = 50,main = '', xlab = 'Slope coefficient (on log scale)', 
+     col = 'grey',ylab='', yaxt='n')
+xs=seq(0,2,length.out = 2000); 
+lines(xs, dnorm(xs,mean = prior_params$log_slope_prior_mu,sd = prior_params$log_slope_prior_sd),
+      col='red',lwd=3)
+
 
 hist(thetas$mu_normal, freq=F,breaks = 50,main = '', 
      xlab = 'Decrease for steady state QRS (msec)', col = 'grey', ylab='', yaxt='n')
 xs=seq(0,10,length.out = 500); 
-lines(xs, dnorm(xs,mean = 5,sd = 1),col='red',lwd=3)
+lines(xs, dnorm(xs,mean = prior_params$mu_normal_mean,sd = prior_params$mu_normal_sd),col='red',lwd=3)
 
 hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma self-poisoning', 
      col = 'grey',ylab='', yaxt='n')
 xs=seq(0,50,length.out = 500); 
-lines(xs, dnorm(xs,mean=25, sd=5),col='red',lwd=3)
+lines(xs, dnorm(xs,mean = 25, sd = 5),col='red',lwd=3)
 
 hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
      col = 'grey',  ylab='', yaxt='n')
-lines(xs, dnorm(xs,mean=2, sd=1),col='red',lwd=3)
-
+lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
 
 hist(thetas$sigma_i, freq=F,breaks = 50,main = '', 
      xlab = 'Inter-individual sigma (healthy volunteers)', col = 'grey',
      ylab='', yaxt='n')
-lines(xs, dexp(xs,rate = 0.2),col='red',lwd=3)
+lines(xs, dexp(xs,rate = prior_params$sigma_i_prior),col='red',lwd=3)
 ```
 
 ![](Analysis_QRS_files/figure-html/priors_vs_posteriors_QRS-1.png)<!-- -->
