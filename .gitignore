@@ -1,4 +1,5 @@
-Analysis_cache/*
+Analysis_death_cache/*
+Analysis_QRS_cache/*
 *.pdf
 *.swp
 .DS_Store
