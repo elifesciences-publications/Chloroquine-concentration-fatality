@@ -19,10 +19,10 @@ library(knitr)
 library(gtools)
 library(rstan)
 library(RColorBrewer)
-RUN_MODELS=F
+RUN_MODELS=T
 
 #****** Parameters for the analysis *******
-plasma_to_whole_blood_ratio = 3 # conversion for PK model 2
+plasma_to_whole_blood_ratio = 4 # conversion for PK model 2
 Weight_interested = 70 # displays results for chosen weight - has to be multiple of 5 between 40 and 90!
 
 ```
@@ -35,7 +35,7 @@ Data from Riou were extracted from published graph (see Figure 3 in NEJM Riou et
 pooled_data = read.csv('Pooled_data.csv')
 ```
 
-#### Comparing retrospective and prospective dat
+#### Comparing retrospective and prospective data
 
 We use simple logistic regression on admission concentrations to demonstrate significant differences between the retrospective and prospective data
 ```{r retro_vs_pros}
@@ -57,22 +57,7 @@ legend('bottomright', lwd=3, legend = c('Prospective data','Retrospective data')
        inset=0.03, lty=1:2)
 ```
 
-```{r}
-# ind_clemessy=pooled_data$Study=='Clemessy'
-# ind_mb = pooled_data$Study=='Megarbane'
-# 
-# mod_1 = glm(Outcome ~ log(CQumolL_Admission), data = pooled_data[ind_clemessy,], family='binomial')
-# mod_2 = glm(Outcome ~ log(CQumolL_Admission), data = pooled_data[ind_mb,], family='binomial')
-# 
-# plot(1:100, predict(mod_1, newdata = data.frame(CQumolL_Admission=1:100),type='response'),type='l',
-#      ylim=c(0,1),lwd=3, xlab='Chloroquine concentration (umol/L)',
-#       ylab='Probability of death', panel.first=grid())
-# lines(1:100, predict(mod_2, newdata = data.frame(CQumolL_Admission=1:100),type='response'),
-#       col='blue',lwd=3,lty=2)
-# legend('bottomright', lwd=3, legend = c('Prospective data','Retrospective data'),col=c(1,4),
-#        inset=0.03, lty=1:2)
 
-```
 
 
 
@@ -130,12 +115,11 @@ if(RUN_MODELS) log_reg = stan_model(model_code = logistic_model)
 ## Fit main model to prospective data
 
 ```{r, include=FALSE}
-N_iter = 10^4
-N_thin = 14
-N_chains = 4
+N_iter = 10^5
+N_thin = 100
+N_chains = 8
 #options(mc.cores = N_chains)
 prior_params = list(mean_alpha = -15, sd_alpha=1, mean_beta=4, sd_beta=1)
-
 ind_increase = !is.na(pooled_data$CQumolL_Peak) & pooled_data$CQumolL_Peak>pooled_data$CQumolL_Admission
 CQ_data = list(N_admission = as.integer(sum(!ind_increase)),
                N_peak = as.integer(sum(ind_increase)),
@@ -143,19 +127,18 @@ CQ_data = list(N_admission = as.integer(sum(!ind_increase)),
                log_conc_peak = log(pooled_data$CQumolL_Peak[ind_increase]),
                y_admission = as.integer(pooled_data$Outcome[!ind_increase]),
                y_peak = as.integer(pooled_data$Outcome[ind_increase]))
-
 if(RUN_MODELS){
   mod_full = sampling(log_reg,
                       data=c(CQ_data, prior_params),
                       iter = N_iter, thin = N_thin, chains= N_chains)
-  
   save(mod_full, file = 'mod_full.stanout')
+} else {
+  load('mod_full.stanout')
 }
 ```
 
 
-```{r priors_vs_posteriors}
-load('mod_full.stanout')
+```{r priors_vs_posteriors_death}
 thetas = extract(mod_full)
 par(mfrow=c(2,2),las=1, cex.lab=1.5)
 hist(thetas$alpha, freq = F,breaks = 50,main = '', xlab = expression(alpha), col = 'grey',
@@ -190,7 +173,7 @@ for(k in 1:K){
 plot(density(OnePercent),xlab='Chloroquine concentration in whole blood (umol/L)', 
      main = 'Concentration that gives 1% mortality', yaxt='n', ylab='', bty='n',lwd=3)
 abline(v=quantile(OnePercent, probs = c(0.025, 0.975)),lty=2)
-print(quantile(OnePercent, probs = c(0.025, 0.5, 0.975)))
+print(round(quantile(OnePercent, probs = c(0.025, 0.5, 0.975)),1))
 ```
 
 # Pharmacokinetic models output
@@ -208,11 +191,14 @@ cols = c(cols[1], cols[2], cols[3],cols[1],cols[3],cols[4])
 cols=c(cols,cols)
 cnames = unlist(dimnames(Cmax_pop)[1])
 
-legend_names = c('310mg twice daily (10 days)','600mg twice daily (10 days)',
+legend_names = c('310mg twice daily (10 days)',
+                 '600mg twice daily (10 days)',
                  '310mg twice daily (7 days)', 
-                 'Weight-based (10 days)','Weight-based (7 days)',
+                 'Weight-based (10 days)',
+                 'Weight-based (7 days)',
                  'Malaria treatment (3 days)')
 
+# Linear scale
 par(mfrow=c(2,3),bty='n',las=1, family='serif')
 ws = grep(pattern = Weight_interested, x = unlist(dimnames(Cmax_pop)[2]))
 for(i in 1:length(ind_plasma)){
@@ -225,6 +211,22 @@ for(i in 1:length(ind_plasma)){
 }
 legend('topright',title = paste('Cmax in',Weight_interested,'kg adult'), col=2:1, 
        lwd=3, legend = c('Whole blood','Plasma'))
+
+# Log scale
+par(mfrow=c(2,3),bty='n',las=1, family='serif')
+ws = grep(pattern = Weight_interested, x = unlist(dimnames(Cmax_pop)[2]))
+for(i in 1:length(ind_plasma)){
+  plot(density(log(Cmax_pop[ind_plasma[i],ws,,1])), main=legend_names[i], ylim=c(0,4),
+       xlab=expression('log concentration (log '*mu*'mol/L)'), ylab='', yaxt='n',lwd=3)
+  lines(density(log(Cmax_pop[ind_WB[i],ws,,1])),col='red',lwd=3)
+  writeLines(sprintf('Median cmax for regimen %s is %s under whole blood model and %s under plasma model',
+                     cnames[i], round(median(Cmax_pop[ind_WB[i],ws,,1]),1),
+                     round(median(Cmax_pop[ind_plasma[i],ws,,1],1))))
+}
+legend('topright',title = paste('Cmax in',Weight_interested,'kg adult'), col=2:1, 
+       lwd=3, legend = c('Whole blood','Plasma'))
+
+# qq plots between the two models
 for(i in 1:length(ind_plasma)){
   qqplot(Cmax_pop[ind_WB[i],ws,,1], Cmax_pop[ind_plasma[i],ws,,1], main=cnames[i], 
          xlab='Whole blood model', ylab='Plasma model', pch='.')
@@ -386,7 +388,7 @@ for(i in ind_model){
 legend('topleft',legend = legend_names,col=cols[ind_model],lwd=2,inset=0.02,lty=ltys,
        title = paste('99 percentile of Cmax for',Weight_interested,'kg adult'))
 qs=quantile(OnePercent, probs = c(0.025,0.975))
-polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,1,1), col = adjustcolor('red',alpha.f = .2),border = NA)
+polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,2,2), col = adjustcolor('red',alpha.f = .2),border = NA)
 ```
 
 Mortality per thousand across the weight categories
@@ -403,7 +405,7 @@ knitr::kable(round(100*apply(Cmax_pop[,,,1] > 10, c(1,2), mean),1))
 ```
 
 
-## Supplementary: Plasma PK model predictionsm
+## Supplementary: Plasma PK model predictions
 
 ```{r}
 writeLines(sprintf('Using a blood to plasma ratio of %s', plasma_to_whole_blood_ratio))
@@ -417,7 +419,7 @@ ind_model = ind_plasma
 
 ltys = rep(c(1,1,1,2,2,1),2)
 lwds = c(rep(3,6), rep(2,6))
-tick_points = c(1:19,seq(20,100,by=10))
+tick_points = c(2:19,seq(20,100,by=10))
 x_points = c(2,3,5,10,13,20)
 legend_names = c('310mg daily (10 days)','600mg twice daily (10 days)',
                  '310mg daily (7 days)', 
@@ -426,8 +428,8 @@ legend_names = c('310mg daily (10 days)','600mg twice daily (10 days)',
 par(las=1, bty='n', family = 'serif',cex.lab=1.5, cex.axis=1.5,mar=c(5,6,2,2))
 layout(mat = matrix(c(1,1,2,3), nrow = 2, byrow = T))
 
-plot(density(log(Cmax_pop[ind_model[1],ws,,q]),na.rm=T), xlim = log(c(1, 20)),ylab='',yaxt='n', 
-     xaxt='n', main='',col=cols[ind_model[1]],lwd=lwds[ind_model[1]], ylim=c(0,2.7),
+plot(density(log(Cmax_pop[ind_model[1],ws,,q]),na.rm=T), xlim = log(c(2, 20)),ylab='',yaxt='n', 
+     xaxt='n', main='',col=cols[ind_model[1]],lwd=lwds[ind_model[1]], ylim=c(0,3),
      xlab = expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')))
 for(i in ind_model[-1]){
   lines(density(log(Cmax_pop[i,ws,,q]),na.rm=T), lwd=lwds[i],col=cols[i],lty=ltys[i])
@@ -474,9 +476,9 @@ mtext(text = 'C',side = 3,cex=1.5,adj = 0)
 x_points = c(1,3,10,20,100)
 
 par(mfrow=c(2,1),las=1, cex.lab=1.5, cex.axis=1.5, family='serif',bty='n',mar=c(5,6,2,2))
-hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]), xlim = log10(c(1,100)),
+hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]),
      main='', breaks = seq(-1.25,2.125,by=.25/2),ylab='',
-     xaxt='n',
+     xaxt='n', xlim = log10(c(1,100)),
      xlab = expression(paste('Whole blood chloroquine+desethychloroquine concentration (',mu,'mol/L)')), 
      col=adjustcolor('blue',alpha.f = .5))
 hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==1]), 
@@ -505,5 +507,5 @@ for(i in ind_model){
 legend('topleft',legend = legend_names,col=cols[ind_model],lwd=2,inset=0.02,lty=ltys,
        title = paste('99 percentile of Cmax for', Weight_interested,'kg adult'))
 qs=quantile(OnePercent, probs = c(0.025,0.975))
-polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,1,1), col = adjustcolor('red',alpha.f = .2),border = NA)
+polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,2,2), col = adjustcolor('red',alpha.f = .2),border = NA)
 ```

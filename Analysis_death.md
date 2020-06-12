@@ -20,7 +20,7 @@ Data from Riou were extracted from published graph (see Figure 3 in NEJM Riou et
 pooled_data = read.csv('Pooled_data.csv')
 ```
 
-#### Comparing retrospective and prospective dat
+#### Comparing retrospective and prospective data
 
 We use simple logistic regression on admission concentrations to demonstrate significant differences between the retrospective and prospective data
 
@@ -39,23 +39,23 @@ summary(mod_pros)
 ##     data = pooled_data[ind_pros, ])
 ## 
 ## Deviance Residuals: 
-##     Min       1Q   Median       3Q      Max  
-## -1.5863  -0.4766  -0.2856  -0.1250   2.8709  
+##      Min        1Q    Median        3Q       Max  
+## -1.53226  -0.41514  -0.20905  -0.06592   2.73333  
 ## 
 ## Coefficients:
 ##                        Estimate Std. Error z value Pr(>|z|)    
-## (Intercept)             -9.3145     1.4468  -6.438 1.21e-10 ***
-## log(CQumolL_Admission)   2.2827     0.4196   5.441 5.31e-08 ***
+## (Intercept)            -12.1659     2.0711  -5.874 4.25e-09 ***
+## log(CQumolL_Admission)   3.0846     0.5897   5.231 1.69e-07 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
-##     Null deviance: 201.63  on 290  degrees of freedom
-## Residual deviance: 155.80  on 289  degrees of freedom
-## AIC: 159.8
+##     Null deviance: 161.91  on 246  degrees of freedom
+## Residual deviance: 112.84  on 245  degrees of freedom
+## AIC: 116.84
 ## 
-## Number of Fisher Scoring iterations: 6
+## Number of Fisher Scoring iterations: 7
 ```
 
 ```r
@@ -94,7 +94,7 @@ coef(mod_pros)
 
 ```
 ##            (Intercept) log(CQumolL_Admission) 
-##              -9.314522               2.282655
+##             -12.165897               3.084641
 ```
 
 ```r
@@ -119,21 +119,6 @@ legend('bottomright', lwd=3, legend = c('Prospective data','Retrospective data')
 ![](Analysis_death_files/figure-html/retro_vs_pros-1.png)<!-- -->
 
 
-```r
-# ind_clemessy=pooled_data$Study=='Clemessy'
-# ind_mb = pooled_data$Study=='Megarbane'
-# 
-# mod_1 = glm(Outcome ~ log(CQumolL_Admission), data = pooled_data[ind_clemessy,], family='binomial')
-# mod_2 = glm(Outcome ~ log(CQumolL_Admission), data = pooled_data[ind_mb,], family='binomial')
-# 
-# plot(1:100, predict(mod_1, newdata = data.frame(CQumolL_Admission=1:100),type='response'),type='l',
-#      ylim=c(0,1),lwd=3, xlab='Chloroquine concentration (umol/L)',
-#       ylab='Probability of death', panel.first=grid())
-# lines(1:100, predict(mod_2, newdata = data.frame(CQumolL_Admission=1:100),type='response'),
-#       col='blue',lwd=3,lty=2)
-# legend('bottomright', lwd=3, legend = c('Prospective data','Retrospective data'),col=c(1,4),
-#        inset=0.03, lty=1:2)
-```
 
 
 
@@ -150,7 +135,7 @@ writeLines(sprintf('%s patients had their peak observed in hospital', length(ind
 ```
 
 ```
-## 61 patients had their peak observed in hospital
+## 57 patients had their peak observed in hospital
 ```
 
 ```r
@@ -159,7 +144,7 @@ hist(log10(pooled_data$CQumolL_Peak[ind_increase])-
      xlab='delta: increase in log concentration in those who peaked at hospital')
 ```
 
-![](Analysis_death_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
+![](Analysis_death_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
 
 ## Stan model
 
@@ -199,6 +184,34 @@ model {
 if(RUN_MODELS) log_reg = stan_model(model_code = logistic_model)
 ```
 
+```
+## Trying to compile a simple C file
+```
+
+```
+## Running /Library/Frameworks/R.framework/Resources/bin/R CMD SHLIB foo.c
+## clang -mmacosx-version-min=10.13 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG   -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/Rcpp/include/"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/unsupported"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/BH/include" -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/StanHeaders/include/src/"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/StanHeaders/include/"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/rstan/include" -DEIGEN_NO_DEBUG  -D_REENTRANT  -DBOOST_DISABLE_ASSERTS -DBOOST_PENDING_INTEGER_LOG2_HPP -include stan/math/prim/mat/fun/Eigen.hpp   -I/usr/local/include   -fPIC  -Wall -g -O2  -c foo.c -o foo.o
+## In file included from <built-in>:1:
+## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp:4:
+## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/Dense:1:
+## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/Core:88:
+## /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/src/Core/util/Macros.h:613:1: error: unknown type name 'namespace'
+## namespace Eigen {
+## ^
+## /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/src/Core/util/Macros.h:613:16: error: expected ';' after top level declarator
+## namespace Eigen {
+##                ^
+##                ;
+## In file included from <built-in>:1:
+## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp:4:
+## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/Dense:1:
+## /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/Core:96:10: fatal error: 'complex' file not found
+## #include <complex>
+##          ^~~~~~~~~
+## 3 errors generated.
+## make: *** [foo.o] Error 1
+```
+
 ## Fit main model to prospective data
 
 
@@ -206,7 +219,6 @@ if(RUN_MODELS) log_reg = stan_model(model_code = logistic_model)
 
 
 ```r
-load('mod_full.stanout')
 thetas = extract(mod_full)
 par(mfrow=c(2,2),las=1, cex.lab=1.5)
 hist(thetas$alpha, freq = F,breaks = 50,main = '', xlab = expression(alpha), col = 'grey',
@@ -227,7 +239,7 @@ hist(thetas$gamma, freq=F,breaks = 50,main = '', xlab = expression(gamma), col =
 xs=seq(0,1,length.out = 500); lines(xs, dnorm(xs,mean=0.7, sd=0.065),col='red',lwd=3)
 ```
 
-![](Analysis_death_files/figure-html/priors_vs_posteriors-1.png)<!-- -->
+![](Analysis_death_files/figure-html/priors_vs_posteriors_death-1.png)<!-- -->
 
 
 
@@ -249,12 +261,12 @@ abline(v=quantile(OnePercent, probs = c(0.025, 0.975)),lty=2)
 ![](Analysis_death_files/figure-html/one_percent_mortality-1.png)<!-- -->
 
 ```r
-print(quantile(OnePercent, probs = c(0.025, 0.5, 0.975)))
+print(round(quantile(OnePercent, probs = c(0.025, 0.5, 0.975)),1))
 ```
 
 ```
-##     2.5%      50%    97.5% 
-## 10.20575 12.10510 14.27135
+##  2.5%   50% 97.5% 
+##  10.2  12.1  14.2
 ```
 
 # Pharmacokinetic models output
@@ -278,6 +290,7 @@ legend_names = c('310mg twice daily (10 days)','600mg twice daily (10 days)',
                  'Weight-based (10 days)','Weight-based (7 days)',
                  'Malaria treatment (3 days)')
 
+# Linear scale
 par(mfrow=c(2,3),bty='n',las=1, family='serif')
 ws = grep(pattern = Weight_interested, x = unlist(dimnames(Cmax_pop)[2]))
 for(i in 1:length(ind_plasma)){
@@ -291,27 +304,27 @@ for(i in 1:length(ind_plasma)){
 ```
 
 ```
-## Median cmax for regimen MORU_flat_10D_WB is 5.9 under whole blood model and 5 under plasma model
+## Median cmax for regimen MORU_flat_10D_WB is 5.9 under whole blood model and 6 under plasma model
 ```
 
 ```
-## Median cmax for regimen Brazil_WB is 10.7 under whole blood model and 8 under plasma model
+## Median cmax for regimen Brazil_WB is 10.7 under whole blood model and 11 under plasma model
 ```
 
 ```
-## Median cmax for regimen MORU_flat7d_WB is 5.1 under whole blood model and 4 under plasma model
+## Median cmax for regimen MORU_flat7d_WB is 5.1 under whole blood model and 5 under plasma model
 ```
 
 ```
-## Median cmax for regimen MORU_BW10_WB is 6.1 under whole blood model and 5 under plasma model
+## Median cmax for regimen MORU_BW10_WB is 6.1 under whole blood model and 6 under plasma model
 ```
 
 ```
-## Median cmax for regimen MORU_BW7_WB is 5.3 under whole blood model and 4 under plasma model
+## Median cmax for regimen MORU_BW7_WB is 5.3 under whole blood model and 6 under plasma model
 ```
 
 ```
-## Median cmax for regimen Malaria_flat_WB is 3.3 under whole blood model and 3 under plasma model
+## Median cmax for regimen Malaria_flat_WB is 3.3 under whole blood model and 4 under plasma model
 ```
 
 ```r
@@ -322,6 +335,52 @@ legend('topright',title = paste('Cmax in',Weight_interested,'kg adult'), col=2:1
 ![](Analysis_death_files/figure-html/compare_PK_models-1.png)<!-- -->
 
 ```r
+# Log scale
+par(mfrow=c(2,3),bty='n',las=1, family='serif')
+ws = grep(pattern = Weight_interested, x = unlist(dimnames(Cmax_pop)[2]))
+for(i in 1:length(ind_plasma)){
+  plot(density(log(Cmax_pop[ind_plasma[i],ws,,1])), main=legend_names[i], ylim=c(0,4),
+       xlab=expression('log concentration (log '*mu*'mol/L)'), ylab='', yaxt='n',lwd=3)
+  lines(density(log(Cmax_pop[ind_WB[i],ws,,1])),col='red',lwd=3)
+  writeLines(sprintf('Median cmax for regimen %s is %s under whole blood model and %s under plasma model',
+                     cnames[i], round(median(Cmax_pop[ind_WB[i],ws,,1]),1),
+                     round(median(Cmax_pop[ind_plasma[i],ws,,1],1))))
+}
+```
+
+```
+## Median cmax for regimen MORU_flat_10D_WB is 5.9 under whole blood model and 6 under plasma model
+```
+
+```
+## Median cmax for regimen Brazil_WB is 10.7 under whole blood model and 11 under plasma model
+```
+
+```
+## Median cmax for regimen MORU_flat7d_WB is 5.1 under whole blood model and 5 under plasma model
+```
+
+```
+## Median cmax for regimen MORU_BW10_WB is 6.1 under whole blood model and 6 under plasma model
+```
+
+```
+## Median cmax for regimen MORU_BW7_WB is 5.3 under whole blood model and 6 under plasma model
+```
+
+```
+## Median cmax for regimen Malaria_flat_WB is 3.3 under whole blood model and 4 under plasma model
+```
+
+```r
+legend('topright',title = paste('Cmax in',Weight_interested,'kg adult'), col=2:1, 
+       lwd=3, legend = c('Whole blood','Plasma'))
+```
+
+![](Analysis_death_files/figure-html/compare_PK_models-2.png)<!-- -->
+
+```r
+# qq plots between the two models
 for(i in 1:length(ind_plasma)){
   qqplot(Cmax_pop[ind_WB[i],ws,,1], Cmax_pop[ind_plasma[i],ws,,1], main=cnames[i], 
          xlab='Whole blood model', ylab='Plasma model', pch='.')
@@ -329,7 +388,7 @@ for(i in 1:length(ind_plasma)){
 }
 ```
 
-![](Analysis_death_files/figure-html/compare_PK_models-2.png)<!-- -->
+![](Analysis_death_files/figure-html/compare_PK_models-3.png)<!-- -->
 
 ```r
 median_cmax = array(dim = c(dim(Cmax_pop)[1], dim(Cmax_pop)[2]))
@@ -346,7 +405,7 @@ for(i in 2:dim(Cmax_pop)[1]){
 }
 ```
 
-![](Analysis_death_files/figure-html/compare_PK_models-3.png)<!-- -->
+![](Analysis_death_files/figure-html/compare_PK_models-4.png)<!-- -->
 
 
 
@@ -512,7 +571,7 @@ for(i in ind_model){
 legend('topleft',legend = legend_names,col=cols[ind_model],lwd=2,inset=0.02,lty=ltys,
        title = paste('99 percentile of Cmax for',Weight_interested,'kg adult'))
 qs=quantile(OnePercent, probs = c(0.025,0.975))
-polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,1,1), col = adjustcolor('red',alpha.f = .2),border = NA)
+polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,2,2), col = adjustcolor('red',alpha.f = .2),border = NA)
 ```
 
 ![](Analysis_death_files/figure-html/Fig1-1.png)<!-- -->
@@ -533,16 +592,16 @@ knitr::kable(round(mean_mortality_per_thousand,1))
 
                           40     45     50     55     60    65    70    75    80    85    90
 ---------------------  -----  -----  -----  -----  -----  ----  ----  ----  ----  ----  ----
-MORU_flat_10D_WB         3.1    1.2    0.5    0.2    0.1   0.0   0.0   0.0   0.0   0.0   0.0
-Brazil_WB               61.4   39.7   26.6   18.7   12.4   8.0   5.8   4.0   2.2   1.5   0.8
+MORU_flat_10D_WB         3.2    1.2    0.6    0.2    0.1   0.0   0.0   0.0   0.0   0.0   0.0
+Brazil_WB               61.9   40.0   26.8   18.9   12.6   8.1   5.9   4.1   2.3   1.6   0.8
 MORU_flat7d_WB           0.9    0.3    0.1    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_BW10_WB             0.0    0.0    0.4    0.2    0.1   0.0   0.0   0.0   0.4   0.2   0.1
 MORU_BW7_WB              0.0    0.0    0.1    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
 Malaria_flat_WB          0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
-MORU_flat_10D_plasma     0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
-Brazil_plasma           17.9   11.4    6.0    3.1    1.3   0.7   0.2   0.2   0.1   0.0   0.0
-MORU_flat7d_plasma       0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
-MORU_BW10_plasma         0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
+MORU_flat_10D_plasma     0.9    0.3    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
+Brazil_plasma           50.5   35.4   23.4   16.3   10.0   6.6   3.9   2.1   1.1   0.7   0.3
+MORU_flat7d_plasma       0.3    0.1    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
+MORU_BW10_plasma         0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.1   0.0   0.0
 MORU_BW7_plasma          0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
 Malaria_flat_plasma      0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0
 
@@ -560,18 +619,18 @@ knitr::kable(round(uCI_mortality_per_thousand,1))
 
                           40     45     50     55     60     65     70    75    80    85    90
 ---------------------  -----  -----  -----  -----  -----  -----  -----  ----  ----  ----  ----
-MORU_flat_10D_WB         8.2    3.9    1.9    0.8    0.5    0.1    0.0   0.0   0.0   0.0   0.0
-Brazil_WB               97.2   64.7   44.9   33.5   24.0   17.2   13.2   9.6   6.2   4.3   2.8
+MORU_flat_10D_WB         8.4    4.0    1.9    0.8    0.5    0.1    0.0   0.0   0.0   0.0   0.0
+Brazil_WB               99.3   66.3   46.2   34.3   24.6   17.5   13.3   9.8   6.3   4.4   2.8
 MORU_flat7d_WB           3.2    1.1    0.4    0.1    0.0    0.0    0.0   0.0   0.0   0.0   0.0
 MORU_BW10_WB             0.0    0.0    1.6    0.8    0.5    0.1    0.0   0.1   1.5   0.8   0.4
 MORU_BW7_WB              0.0    0.0    0.2    0.1    0.0    0.0    0.0   0.0   0.2   0.1   0.0
 Malaria_flat_WB          0.0    0.0    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
-MORU_flat_10D_plasma     0.3    0.1    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
-Brazil_plasma           32.5   23.1   14.7    9.1    5.3    3.1    1.3   0.8   0.3   0.2   0.1
-MORU_flat7d_plasma       0.0    0.0    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
-MORU_BW10_plasma         0.0    0.0    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
-MORU_BW7_plasma          0.0    0.0    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
-Malaria_flat_plasma      0.0    0.0    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
+MORU_flat_10D_plasma     3.8    1.6    0.3    0.1    0.0    0.0    0.0   0.0   0.0   0.0   0.0
+Brazil_plasma           82.8   59.0   41.0   30.6   21.5   16.3   11.7   7.7   4.8   3.2   1.6
+MORU_flat7d_plasma       1.6    0.5    0.1    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
+MORU_BW10_plasma         0.0    0.0    0.2    0.1    0.0    0.0    0.0   0.0   0.4   0.1   0.1
+MORU_BW7_plasma          0.0    0.0    0.0    0.0    0.0    0.0    0.0   0.0   0.1   0.0   0.0
+Malaria_flat_plasma      0.1    0.1    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
 
 ```r
 writeLines('Lower 95 CI of predicted mortality')
@@ -588,13 +647,13 @@ knitr::kable(round(lCI_mortality_per_thousand,1))
                           40     45     50    55    60    65    70    75    80    85    90
 ---------------------  -----  -----  -----  ----  ----  ----  ----  ----  ----  ----  ----
 MORU_flat_10D_WB         0.5    0.1    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
-Brazil_WB               32.7   19.1   11.7   7.3   4.1   2.2   1.4   0.8   0.3   0.2   0.1
+Brazil_WB               32.8   19.7   12.2   7.6   4.3   2.3   1.4   0.9   0.4   0.2   0.1
 MORU_flat7d_WB           0.1    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_BW10_WB             0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_BW7_WB              0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 Malaria_flat_WB          0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_flat_10D_plasma     0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
-Brazil_plasma            6.6    3.2    1.1   0.3   0.1   0.0   0.0   0.0   0.0   0.0   0.0
+Brazil_plasma           26.4   17.1    9.6   5.1   2.0   1.0   0.3   0.1   0.0   0.0   0.0
 MORU_flat7d_plasma       0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_BW10_plasma         0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_BW7_plasma          0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
@@ -612,23 +671,23 @@ writeLines('Proportion of Cmax above 10umol/L')
 knitr::kable(round(100*apply(Cmax_pop[,,,1] > 10, c(1,2), mean),1))
 ```
 
-                          40     45     50     55     60     65     70     75     80     85     90
----------------------  -----  -----  -----  -----  -----  -----  -----  -----  -----  -----  -----
-MORU_flat_10D_WB        46.7   26.9   14.3    7.0    3.7    1.4    0.2    0.4    0.3    0.0    0.0
-Brazil_WB               99.9   98.1   96.1   91.5   83.3   74.3   61.7   51.1   37.1   27.6   20.4
-MORU_flat7d_WB          22.1    8.9    3.0    0.8    0.6    0.3    0.0    0.0    0.0    0.0    0.0
-MORU_BW10_WB             0.1    0.0   11.7    7.0    3.7    1.4    0.4    0.5   10.9    7.6    3.7
-MORU_BW7_WB              0.0    0.0    2.0    0.8    0.6    0.3    0.0    0.0    1.9    1.0    0.1
-Malaria_flat_WB          0.2    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0
-MORU_flat_10D_plasma     2.7    0.7    0.2    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0
-Brazil_plasma           96.3   89.8   75.0   56.2   39.2   24.8   11.5    7.4    3.6    2.1    0.5
-MORU_flat7d_plasma       0.8    0.1    0.0    0.1    0.0    0.0    0.0    0.0    0.0    0.0    0.0
-MORU_BW10_plasma         0.0    0.0    0.2    0.0    0.0    0.0    0.0    0.0    0.2    0.1    0.0
-MORU_BW7_plasma          0.0    0.0    0.0    0.1    0.0    0.0    0.0    0.0    0.0    0.0    0.0
-Malaria_flat_plasma      0.3    0.3    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0
+                           40      45     50     55     60     65     70     75     80     85     90
+---------------------  ------  ------  -----  -----  -----  -----  -----  -----  -----  -----  -----
+MORU_flat_10D_WB         46.7    26.9   14.3    7.0    3.7    1.4    0.2    0.4    0.3    0.0    0.0
+Brazil_WB                99.9    98.1   96.1   91.5   83.3   74.3   61.7   51.1   37.1   27.6   20.4
+MORU_flat7d_WB           22.1     8.9    3.0    0.8    0.6    0.3    0.0    0.0    0.0    0.0    0.0
+MORU_BW10_WB              0.1     0.0   11.7    7.0    3.7    1.4    0.4    0.5   10.9    7.6    3.7
+MORU_BW7_WB               0.0     0.0    2.0    0.8    0.6    0.3    0.0    0.0    1.9    1.0    0.1
+Malaria_flat_WB           0.2     0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0
+MORU_flat_10D_plasma     32.1    15.6    3.9    0.8    0.1    0.0    0.0    0.0    0.0    0.0    0.0
+Brazil_plasma           100.0   100.0   99.6   98.0   91.9   83.0   71.2   55.9   37.4   28.3   16.0
+MORU_flat7d_plasma       16.4     4.2    0.7    0.3    0.0    0.0    0.0    0.0    0.0    0.0    0.0
+MORU_BW10_plasma          0.0     0.0    3.0    0.8    0.1    0.0    0.0    0.0    4.7    1.0    0.5
+MORU_BW7_plasma           0.0     0.0    0.6    0.3    0.0    0.0    0.0    0.0    0.8    0.1    0.2
+Malaria_flat_plasma       1.4     0.3    0.1    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0
 
 
-## Supplementary: Plasma PK model predictionsm
+## Supplementary: Plasma PK model predictions
 
 
 ```r
@@ -636,7 +695,7 @@ writeLines(sprintf('Using a blood to plasma ratio of %s', plasma_to_whole_blood_
 ```
 
 ```
-## Using a blood to plasma ratio of 3
+## Using a blood to plasma ratio of 4
 ```
 
 
@@ -648,7 +707,7 @@ ind_model = ind_plasma
 
 ltys = rep(c(1,1,1,2,2,1),2)
 lwds = c(rep(3,6), rep(2,6))
-tick_points = c(1:19,seq(20,100,by=10))
+tick_points = c(2:19,seq(20,100,by=10))
 x_points = c(2,3,5,10,13,20)
 legend_names = c('310mg daily (10 days)','600mg twice daily (10 days)',
                  '310mg daily (7 days)', 
@@ -657,8 +716,8 @@ legend_names = c('310mg daily (10 days)','600mg twice daily (10 days)',
 par(las=1, bty='n', family = 'serif',cex.lab=1.5, cex.axis=1.5,mar=c(5,6,2,2))
 layout(mat = matrix(c(1,1,2,3), nrow = 2, byrow = T))
 
-plot(density(log(Cmax_pop[ind_model[1],ws,,q]),na.rm=T), xlim = log(c(1, 20)),ylab='',yaxt='n', 
-     xaxt='n', main='',col=cols[ind_model[1]],lwd=lwds[ind_model[1]], ylim=c(0,2.7),
+plot(density(log(Cmax_pop[ind_model[1],ws,,q]),na.rm=T), xlim = log(c(2, 20)),ylab='',yaxt='n', 
+     xaxt='n', main='',col=cols[ind_model[1]],lwd=lwds[ind_model[1]], ylim=c(0,3),
      xlab = expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')))
 for(i in ind_model[-1]){
   lines(density(log(Cmax_pop[i,ws,,q]),na.rm=T), lwd=lwds[i],col=cols[i],lty=ltys[i])
@@ -708,9 +767,9 @@ mtext(text = 'C',side = 3,cex=1.5,adj = 0)
 x_points = c(1,3,10,20,100)
 
 par(mfrow=c(2,1),las=1, cex.lab=1.5, cex.axis=1.5, family='serif',bty='n',mar=c(5,6,2,2))
-hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]), xlim = log10(c(1,100)),
+hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]),
      main='', breaks = seq(-1.25,2.125,by=.25/2),ylab='',
-     xaxt='n',
+     xaxt='n', xlim = log10(c(1,100)),
      xlab = expression(paste('Whole blood chloroquine+desethychloroquine concentration (',mu,'mol/L)')), 
      col=adjustcolor('blue',alpha.f = .5))
 hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==1]), 
@@ -740,24 +799,24 @@ for(i in ind_model){
 
 ```
 ##      99% 
-## 6.735651 
+## 8.292776 
 ##      99% 
-## 12.94727 
+## 15.93706 
 ##      99% 
-## 6.513993 
+## 8.145144 
 ##      99% 
-## 6.735651 
+## 8.292776 
 ##      99% 
-## 6.513993 
+## 8.145144 
 ##      99% 
-## 5.789511
+## 6.457228
 ```
 
 ```r
 legend('topleft',legend = legend_names,col=cols[ind_model],lwd=2,inset=0.02,lty=ltys,
        title = paste('99 percentile of Cmax for', Weight_interested,'kg adult'))
 qs=quantile(OnePercent, probs = c(0.025,0.975))
-polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,1,1), col = adjustcolor('red',alpha.f = .2),border = NA)
+polygon(x = log(c(qs,rev(qs))), y = c(-9,-9,2,2), col = adjustcolor('red',alpha.f = .2),border = NA)
 ```
 
 ![](Analysis_death_files/figure-html/S_Fig1-1.png)<!-- -->
