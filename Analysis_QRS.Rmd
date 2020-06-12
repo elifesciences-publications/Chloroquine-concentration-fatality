@@ -52,10 +52,10 @@ plot(log10(pooled_data$CQ_uMol), ys+pooled_data$QRS, xaxt='n',
      xlab=expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')), 
      pch = pooled_data$died+1,main='Raw QRS data (no bias or outlier adjustement)')
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
-legend('topleft',  pch = c(1,1,1,1,2),
+legend('topleft',  pch = c(1,1,1,2),
        legend = c('Healthy volunteers (600 mg base)','Clemessy',
-                  'Megarbane','Survivors','Fatal cases'),
-       col = c(col_study[c(3,1,2)],'black','black'), inset = 0.03)
+                  'Survivors','Fatal cases'),
+       col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
 abline(h=150, v=1, lty=2)
 ```
 
@@ -118,7 +118,7 @@ model {
   
   sigma_i ~ exponential(0.2); // prior standard deviation is +/- 5 msec of IIV
   sigma1 ~ normal(25,5);
-  sigma2 ~ normal(5,3);
+  sigma2 ~ normal(2,1);
   
   // Likelihood
   for (j in 1:N1){
@@ -145,8 +145,8 @@ N_iter = 10^5
 N_thin = 100
 N_chains = 8
 #options(mc.cores = N_chains)
-prior_params = list(max_effect_prior_mu = 200,
-                    max_effect_prior_sd = 40, 
+prior_params = list(max_effect_prior_mu = 180,
+                    max_effect_prior_sd = 10, 
                     min_effect_prior_mu = 90,
                     min_effect_prior_sd = 4,
                     log_slope_prior_mu = 0,
@@ -184,7 +184,6 @@ sigmoid = function(log10_conc, ed50, log_slope, max_effect, min_effect){
   return (max_effect + (min_effect-max_effect)/(1 + exp(exp(log_slope)*(log10_conc-ed50))))
 }
 thetas = extract(mod_QRS_full)
-
 
 xs1 = seq(0,2,length.out = 100)
 ys1 = array(dim = c(100,length(thetas$log_slope)))

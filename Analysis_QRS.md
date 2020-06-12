@@ -29,17 +29,20 @@ pooled_data$CQ_uMol[pooled_data$study==2] =
 col_study = RColorBrewer::brewer.pal(n = 3, name = 'Set1')[c(1,3)]
 
 ind_clem = pooled_data$study==1
+
+# jitter the self-poisoning QRS data
 ys = rep(0, nrow(pooled_data)); ys[ind_clem] = rnorm(sum(ind_clem),mean = 0,sd = 1)
+
 par(las=1, bty='n', family='serif',cex.lab=1.5, cex.axis=1.5)
 plot(log10(pooled_data$CQ_uMol), ys+pooled_data$QRS, xaxt='n',
      col = col_study[pooled_data$study], ylab='QRS duration (msec)', 
      xlab=expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')), 
      pch = pooled_data$died+1,main='Raw QRS data (no bias or outlier adjustement)')
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
-legend('topleft',  pch = c(1,1,1,1,2),
+legend('topleft',  pch = c(1,1,1,2),
        legend = c('Healthy volunteers (600 mg base)','Clemessy',
-                  'Megarbane','Survivors','Fatal cases'),
-       col = c(col_study[c(3,1,2)],'black','black'), inset = 0.03)
+                  'Survivors','Fatal cases'),
+       col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
 abline(h=150, v=1, lty=2)
 ```
 
@@ -60,10 +63,17 @@ functions {
 }
 
 data {
-  int<lower=0> N;
-  real log10_conc[N];
-  real QRS[N];
-  int<lower=1,upper=2> study[N]; // 1 is self-poisoning; 2 is healthy volunteers
+  int<lower=0> N1; // number of paired concentration-QRS datapoints
+  int<lower=0> N2; // number of QRS datapoints in absence of drug for healthy volunteers
+  int<lower=0> N_HV; // the number of healthy volunteers 
+  int<lower=0,upper=N_HV> ID1[N1]; // for the interindividual variability - zero is dummy value
+  int<lower=0,upper=N_HV> ID2[N2]; // for the interindividual variability - zero is dummy value
+  real log10_conc[N1];
+  real QRS_drug[N1];
+  real QRS_nodrug[N2];
+  int<lower=1,upper=2> study[N1]; // 1 is self-poisoning; 2 is healthy volunteers
+  
+  // prior parameters
   real ed50_mu;
   real max_effect_prior_mu;
   real max_effect_prior_sd;
@@ -79,8 +89,11 @@ parameters {
   real max_effect;
   real bias_term;
   real ed50;
+  real mu_i[N_HV];
+  real mu_normal; // the value min_effect - mu_normal is mean normal QRS value
   real<lower=0> sigma1;
   real<lower=0> sigma2;
+  real<lower=0> sigma_i; // for inter-individual variability in healthy volunteers
 }
 
 model {
@@ -90,19 +103,25 @@ model {
   ed50 ~ normal(ed50_mu, 1);
   max_effect ~ normal(max_effect_prior_mu,max_effect_prior_sd);
   min_effect ~ normal(min_effect_prior_mu,min_effect_prior_sd);
+  mu_i ~ normal(0,sigma_i);
+  mu_normal ~ normal(5,1);
   
+  sigma_i ~ exponential(0.2); // prior standard deviation is +/- 5 msec of IIV
   sigma1 ~ normal(25,5);
-  sigma2 ~ normal(7,3);
+  sigma2 ~ normal(5,3);
   
   // Likelihood
-  for (j in 1:N){
+  for (j in 1:N1){
     real QRS_pred;
     QRS_pred = sigmoid(log10_conc[j], ed50, log_slope, max_effect, min_effect);
     if(study[j] == 1){
-      QRS[j] ~ normal(QRS_pred + bias_term, sigma1);
+      QRS_drug[j] ~ normal(QRS_pred + bias_term, sigma1);
     } else {
-      QRS[j] ~ normal(QRS_pred, sigma2);
+      QRS_drug[j] ~ normal(QRS_pred + mu_i[ID1[j]], sigma2);
     }
+  }
+  for (j in 1:N2){
+    QRS_nodrug[j] ~ normal(min_effect - mu_normal + mu_i[ID2[j]], sigma2);
   }
 }
 "
@@ -141,15 +160,21 @@ for(i in 1:length(thetas$log_slope)){
                    log_slope = (thetas$log_slope[i]),
                    max_effect = (thetas$max_effect[i]), 
                    min_effect = (thetas$min_effect[i])) + 
-    rnorm(1,0,thetas$sigma2[i])
+    rnorm(1,0,thetas$sigma2[i]) + rnorm(1,0,thetas$sigma_i)
   
   ys3[,i] = sigmoid(log10_conc = xs3, ed50 = (thetas$ed50[i]),
                    log_slope = (thetas$log_slope[i]),
                    max_effect = (thetas$max_effect[i]), 
                    min_effect = (thetas$min_effect[i])) 
 }
+```
 
+
+
+```r
 par(las=1, bty='n', family='serif',cex.lab=1.5, cex.axis=1.5)
+
+# random jitter for visualisation
 jitter_QRS = rnorm(nrow(pooled_data), mean = , sd = 1*as.numeric(pooled_data$study==1))
 plot(x = log10(pooled_data$CQ_uMol), panel.first = grid(),
      y = pooled_data$QRS - mean(thetas$bias_term)*as.numeric(pooled_data$study==1) + jitter_QRS, 
@@ -162,8 +187,18 @@ legend('topleft',  pch = c(1,1,1,2),
                   'Self-poisoning',
                   'Survivors','Fatal cases'),
        col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
-qs=quantile(pooled_data$QRS[pooled_data$CQ_uMol==0], probs = c(0.025,0.975,0.5))
-polygon(x = c(-3,3,3,-3),y = c(qs[1],qs[1],qs[2],qs[2]), 
+
+QRS_normal = array(dim = max(pooled_data$ID))
+for(i in 1:max(pooled_data$ID)){
+  # Take the mean of duplicated normal QRS values in the healthy volunteers
+  QRS_normal[i] = mean(pooled_data$QRS[pooled_data$CQ_uMol==0 & pooled_data$ID==i])
+}
+# then we look at quantiles of these 16 datapoints
+qs=quantile(QRS_normal, probs = c(0,1,0.5))
+
+qrs_normal_estimated = mean(thetas$min_effect) + colMeans(thetas$mu_i) - mean(thetas$mu_normal)
+qs_estimated = quantile(qrs_normal_estimated, probs = c(0,1,0.5))
+polygon(x = c(-3,3,3,-3),y = c(qs_estimated[1],qs_estimated[1],qs_estimated[2],qs_estimated[2]), 
         col = adjustcolor('grey',alpha.f = .4),border = NA)
 
 abline(h=150, v=1, lty=2)
@@ -176,7 +211,7 @@ lines(xs2,apply(ys2,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[2])
 lines(xs2,apply(ys2,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[2])
 
 
-abline(h=qs[3], lty=1, col='grey',lwd=3)
+abline(h=qs_estimated[3], lty=1, col='grey',lwd=3)
 
 points(log10(pooled_data$CQ_uMol), 
        pooled_data$QRS - mean(thetas$bias_term)*as.numeric(pooled_data$study==1)+jitter_QRS, 
@@ -184,6 +219,39 @@ points(log10(pooled_data$CQ_uMol),
 ```
 
 ![](Analysis_QRS_files/figure-html/QRS_fit-1.png)<!-- -->
+
+```r
+# The prolongation from normal to E_min
+quantile(thetas$mu_normal, probs = c(0.025,.5,0.975))
+```
+
+```
+##     2.5%      50%    97.5% 
+## 2.075714 3.221211 4.365078
+```
+
+Increase in QRS at 3 umol/L
+
+```r
+vals = array(dim = length(thetas$log_slope))
+for(i in 1:length(thetas$log_slope)){
+  vals[i] = sigmoid(log10_conc = log10(3), ed50 = thetas$ed50[i], log_slope = thetas$log_slope[i],
+          min_effect = thetas$min_effect[i], max_effect = thetas$max_effect[i]) -
+    (thetas$min_effect[i] - thetas$mu_normal[i])
+}
+hist(vals)
+```
+
+![](Analysis_QRS_files/figure-html/QRS_increase_3umolL-1.png)<!-- -->
+
+```r
+writeLines(sprintf('At 3umol/L the median increase in QRS is %s (95%% CI is %s - %s)',
+                   round(median(vals),1), round(quantile(vals,0.025),1), round(quantile(vals,0.975),1)))
+```
+
+```
+## At 3umol/L the median increase in QRS is 7 (95% CI is 5.9 - 8.2)
+```
 
 
 
