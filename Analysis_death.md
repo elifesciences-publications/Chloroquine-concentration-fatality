@@ -11,6 +11,54 @@ output:
 
 
 
+Show R version and package versions
+
+```r
+sessionInfo()
+```
+
+```
+## R version 4.0.0 (2020-04-24)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.2
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+## [1] RColorBrewer_1.1-2 rstan_2.19.3       ggplot2_3.3.0      StanHeaders_2.19.2
+## [5] gtools_3.8.2       knitr_1.28        
+## 
+## loaded via a namespace (and not attached):
+##  [1] Rcpp_1.0.4.6       pillar_1.4.4       compiler_4.0.0     prettyunits_1.1.1 
+##  [5] tools_4.0.0        digest_0.6.25      pkgbuild_1.0.8     evaluate_0.14     
+##  [9] lifecycle_0.2.0    tibble_3.0.1       gtable_0.3.0       pkgconfig_2.0.3   
+## [13] rlang_0.4.6        cli_2.0.2          parallel_4.0.0     yaml_2.2.1        
+## [17] xfun_0.13          loo_2.2.0          gridExtra_2.3      withr_2.2.0       
+## [21] stringr_1.4.0      dplyr_0.8.5        vctrs_0.3.0        stats4_4.0.0      
+## [25] grid_4.0.0         tidyselect_1.1.0   glue_1.4.1         inline_0.3.15     
+## [29] R6_2.4.1           processx_3.4.2     fansi_0.4.1        rmarkdown_2.1     
+## [33] purrr_0.3.4        callr_3.4.3        magrittr_1.5       matrixStats_0.56.0
+## [37] ps_1.3.3           scales_1.1.1       ellipsis_0.3.1     htmltools_0.4.0   
+## [41] assertthat_0.2.1   colorspace_1.4-1   stringi_1.4.6      munsell_0.5.0     
+## [45] crayon_1.3.4
+```
+
+Important parameters for the analysis/visualisation
+
+```r
+#****** Parameters for the analysis *******
+plasma_to_whole_blood_ratio = 4 # conversion from plasma to whole blood for the healthy volunteer concentration data
+Weight_interested = 70 # displays results for chosen weight - has to be multiple of 5 and between 40 and 90!
+```
+
 ## Data from self-poisoning cohorts
 
 Data from Riou were extracted from published graph (see Figure 3 in NEJM Riou et al, 1988) using WebPlotDigitiser
@@ -144,7 +192,7 @@ hist(log10(pooled_data$CQumolL_Peak[ind_increase])-
      xlab='delta: increase in log concentration in those who peaked at hospital')
 ```
 
-![](Analysis_death_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
+![](Analysis_death_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
 
 ## Stan model
 
@@ -184,37 +232,31 @@ model {
 if(RUN_MODELS) log_reg = stan_model(model_code = logistic_model)
 ```
 
-```
-## Trying to compile a simple C file
-```
-
-```
-## Running /Library/Frameworks/R.framework/Resources/bin/R CMD SHLIB foo.c
-## clang -mmacosx-version-min=10.13 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG   -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/Rcpp/include/"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/unsupported"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/BH/include" -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/StanHeaders/include/src/"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/StanHeaders/include/"  -I"/Library/Frameworks/R.framework/Versions/4.0/Resources/library/rstan/include" -DEIGEN_NO_DEBUG  -D_REENTRANT  -DBOOST_DISABLE_ASSERTS -DBOOST_PENDING_INTEGER_LOG2_HPP -include stan/math/prim/mat/fun/Eigen.hpp   -I/usr/local/include   -fPIC  -Wall -g -O2  -c foo.c -o foo.o
-## In file included from <built-in>:1:
-## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp:4:
-## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/Dense:1:
-## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/Core:88:
-## /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/src/Core/util/Macros.h:613:1: error: unknown type name 'namespace'
-## namespace Eigen {
-## ^
-## /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/src/Core/util/Macros.h:613:16: error: expected ';' after top level declarator
-## namespace Eigen {
-##                ^
-##                ;
-## In file included from <built-in>:1:
-## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp:4:
-## In file included from /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/Dense:1:
-## /Library/Frameworks/R.framework/Versions/4.0/Resources/library/RcppEigen/include/Eigen/Core:96:10: fatal error: 'complex' file not found
-## #include <complex>
-##          ^~~~~~~~~
-## 3 errors generated.
-## make: *** [foo.o] Error 1
-```
-
 ## Fit main model to prospective data
 
 
+```r
+N_iter = 10^5
+N_thin = 100
+N_chains = 8
+#options(mc.cores = N_chains) - broken in current R version!
+prior_params = list(mean_alpha = -15, sd_alpha=1, mean_beta=4, sd_beta=1)
+ind_increase = !is.na(pooled_data$CQumolL_Peak) & pooled_data$CQumolL_Peak>pooled_data$CQumolL_Admission
+CQ_data = list(N_admission = as.integer(sum(!ind_increase)),
+               N_peak = as.integer(sum(ind_increase)),
+               log_conc_admission = log(pooled_data$CQumolL_Admission[!ind_increase]),
+               log_conc_peak = log(pooled_data$CQumolL_Peak[ind_increase]),
+               y_admission = as.integer(pooled_data$Outcome[!ind_increase]),
+               y_peak = as.integer(pooled_data$Outcome[ind_increase]))
+if(RUN_MODELS){
+  mod_full = sampling(log_reg,
+                      data=c(CQ_data, prior_params),
+                      iter = N_iter, thin = N_thin, chains= N_chains)
+  save(mod_full, file = 'mod_full.stanout')
+} else {
+  load('mod_full.stanout')
+}
+```
 
 
 
@@ -285,9 +327,11 @@ cols = c(cols[1], cols[2], cols[3],cols[1],cols[3],cols[4])
 cols=c(cols,cols)
 cnames = unlist(dimnames(Cmax_pop)[1])
 
-legend_names = c('310mg twice daily (10 days)','600mg twice daily (10 days)',
+legend_names = c('310mg twice daily (10 days)',
+                 '600mg twice daily (10 days)',
                  '310mg twice daily (7 days)', 
-                 'Weight-based (10 days)','Weight-based (7 days)',
+                 'Weight-based (10 days)',
+                 'Weight-based (7 days)',
                  'Malaria treatment (3 days)')
 
 # Linear scale

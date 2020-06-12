@@ -1,7 +1,7 @@
 ---
 title: "Chloroquine concentration-fatality curve"
 author: "James Watson"
-date: "4/20/2020"
+date: "6/12/2020"
 output:
   html_document:
     df_print: paged
@@ -19,12 +19,19 @@ library(knitr)
 library(gtools)
 library(rstan)
 library(RColorBrewer)
-RUN_MODELS=T
+RUN_MODELS=F
+```
 
+Show R version and package versions
+```{r}
+sessionInfo()
+```
+
+Important parameters for the analysis/visualisation
+```{r}
 #****** Parameters for the analysis *******
-plasma_to_whole_blood_ratio = 4 # conversion for PK model 2
-Weight_interested = 70 # displays results for chosen weight - has to be multiple of 5 between 40 and 90!
-
+plasma_to_whole_blood_ratio = 4 # conversion from plasma to whole blood for the healthy volunteer concentration data
+Weight_interested = 70 # displays results for chosen weight - has to be multiple of 5 and between 40 and 90!
 ```
 
 ## Data from self-poisoning cohorts
@@ -114,11 +121,11 @@ if(RUN_MODELS) log_reg = stan_model(model_code = logistic_model)
 
 ## Fit main model to prospective data
 
-```{r, include=FALSE}
+```{r}
 N_iter = 10^5
 N_thin = 100
 N_chains = 8
-#options(mc.cores = N_chains)
+#options(mc.cores = N_chains) - broken in current R version!
 prior_params = list(mean_alpha = -15, sd_alpha=1, mean_beta=4, sd_beta=1)
 ind_increase = !is.na(pooled_data$CQumolL_Peak) & pooled_data$CQumolL_Peak>pooled_data$CQumolL_Admission
 CQ_data = list(N_admission = as.integer(sum(!ind_increase)),
@@ -219,9 +226,6 @@ for(i in 1:length(ind_plasma)){
   plot(density(log(Cmax_pop[ind_plasma[i],ws,,1])), main=legend_names[i], ylim=c(0,4),
        xlab=expression('log concentration (log '*mu*'mol/L)'), ylab='', yaxt='n',lwd=3)
   lines(density(log(Cmax_pop[ind_WB[i],ws,,1])),col='red',lwd=3)
-  writeLines(sprintf('Median cmax for regimen %s is %s under whole blood model and %s under plasma model',
-                     cnames[i], round(median(Cmax_pop[ind_WB[i],ws,,1]),1),
-                     round(median(Cmax_pop[ind_plasma[i],ws,,1],1))))
 }
 legend('topright',title = paste('Cmax in',Weight_interested,'kg adult'), col=2:1, 
        lwd=3, legend = c('Whole blood','Plasma'))

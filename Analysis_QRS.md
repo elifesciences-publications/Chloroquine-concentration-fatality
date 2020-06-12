@@ -40,7 +40,7 @@ plot(log10(pooled_data$CQ_uMol), ys+pooled_data$QRS, xaxt='n',
      pch = pooled_data$died+1,main='Raw QRS data (no bias or outlier adjustement)')
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
 legend('topleft',  pch = c(1,1,1,2),
-       legend = c('Healthy volunteers (600 mg base)','Clemessy',
+       legend = c('Healthy volunteers (620 mg base)','Clemessy',
                   'Survivors','Fatal cases'),
        col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
 abline(h=150, v=1, lty=2)
@@ -108,7 +108,7 @@ model {
   
   sigma_i ~ exponential(0.2); // prior standard deviation is +/- 5 msec of IIV
   sigma1 ~ normal(25,5);
-  sigma2 ~ normal(5,3);
+  sigma2 ~ normal(2,1);
   
   // Likelihood
   for (j in 1:N1){
@@ -131,6 +131,43 @@ if(RUN_MODELS) conc_QRS_mod = stan_model(model_code = Conc_QRS_Emax)
 ## Fit main model to prospective data
 
 
+```r
+N_iter = 10^5
+N_thin = 100
+N_chains = 8
+#options(mc.cores = N_chains)
+prior_params = list(max_effect_prior_mu = 180,
+                    max_effect_prior_sd = 10, 
+                    min_effect_prior_mu = 90,
+                    min_effect_prior_sd = 4,
+                    log_slope_prior_mu = 0,
+                    log_slope_prior_sd = 5,
+                    ed50_mu = 1)
+
+# QRS values above 200 are not physiologically possible so we truncate at 200
+pooled_data$QRS[pooled_data$QRS > 200] = 200
+# only use the non-zero concentration-QRS datapoints
+ind_notinf = pooled_data$CQ_uMol > 0 
+
+CQ_data = list(N1 = as.integer(sum(ind_notinf)),
+               N2 = as.integer(sum(!ind_notinf)),
+               log10_conc = log10(pooled_data$CQ_uMol[ind_notinf]),
+               QRS_drug = pooled_data$QRS[ind_notinf],
+               QRS_nodrug = pooled_data$QRS[!ind_notinf],
+               study = as.integer(pooled_data$study[ind_notinf]),
+               ID1 = as.integer(pooled_data$ID[ind_notinf]),
+               ID2 = as.integer(pooled_data$ID[!ind_notinf]),
+               N_HV = as.integer(max(pooled_data$ID)))
+
+if(RUN_MODELS){
+  mod_QRS_full = sampling(conc_QRS_mod,
+                          data=c(CQ_data, prior_params),
+                          iter = N_iter, thin = N_thin, chains = N_chains)
+  save(mod_QRS_full, file = 'mod_QRS_full.stanout')
+} else {
+  load('mod_QRS_full.stanout')
+}
+```
 
 
 
@@ -139,7 +176,6 @@ sigmoid = function(log10_conc, ed50, log_slope, max_effect, min_effect){
   return (max_effect + (min_effect-max_effect)/(1 + exp(exp(log_slope)*(log10_conc-ed50))))
 }
 thetas = extract(mod_QRS_full)
-
 
 xs1 = seq(0,2,length.out = 100)
 ys1 = array(dim = c(100,length(thetas$log_slope)))
@@ -183,7 +219,7 @@ plot(x = log10(pooled_data$CQ_uMol), panel.first = grid(),
      pch = pooled_data$died+1, xlim = c(-1,2))
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
 legend('topleft',  pch = c(1,1,1,2),
-       legend = c('Healthy volunteers (600 mg base)',
+       legend = c('Healthy volunteers (620 mg base)',
                   'Self-poisoning',
                   'Survivors','Fatal cases'),
        col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
@@ -227,7 +263,7 @@ quantile(thetas$mu_normal, probs = c(0.025,.5,0.975))
 
 ```
 ##     2.5%      50%    97.5% 
-## 2.075714 3.221211 4.365078
+## 2.296903 3.446759 4.607770
 ```
 
 Increase in QRS at 3 umol/L
@@ -239,7 +275,7 @@ for(i in 1:length(thetas$log_slope)){
           min_effect = thetas$min_effect[i], max_effect = thetas$max_effect[i]) -
     (thetas$min_effect[i] - thetas$mu_normal[i])
 }
-hist(vals)
+hist(vals, xlab='Estimated mean QRS widening at 3 umol/L (msec)',main='', yaxt='n',ylab='')
 ```
 
 ![](Analysis_QRS_files/figure-html/QRS_increase_3umolL-1.png)<!-- -->
@@ -250,26 +286,26 @@ writeLines(sprintf('At 3umol/L the median increase in QRS is %s (95%% CI is %s -
 ```
 
 ```
-## At 3umol/L the median increase in QRS is 7 (95% CI is 5.9 - 8.2)
+## At 3umol/L the median increase in QRS is 6.9 (95% CI is 5.8 - 8)
 ```
 
 
 
 ```r
-par(mfrow=c(3,2),las=1, cex.lab=1.5)
+par(mfrow=c(3,3),las=1, cex.lab=1.5)
 hist(thetas$max_effect, freq = F,breaks = 50,main = '', 
-     xlab = 'Mean upper QRS value', col = 'grey',ylab='', yaxt='n')
+     xlab = 'Emax QRS (msec)', col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$max_effect), max(thetas$max_effect), length.out=500)
 lines(xs, dnorm(xs, mean = prior_params$max_effect_prior_mu, 
                 sd = prior_params$max_effect_prior_sd), lwd=3, col='red')
 
 hist(thetas$min_effect, freq = F,breaks = 50, main = '', 
-     xlab = 'Mean lower QRS value', col = 'grey',ylab='', yaxt='n')
+     xlab = 'Emin QRS (msec)', col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$min_effect), max(thetas$min_effect), length.out=500)
 lines(xs, dnorm(xs, mean = prior_params$min_effect_prior_mu, 
                 sd = prior_params$min_effect_prior_sd), lwd=3, col='red')
 
-hist(thetas$bias_term,freq=F,breaks = 50,main = '', xlab = 'Bias term (Clemessy series)', 
+hist(thetas$bias_term,freq=F,breaks = 50,main = '', xlab = 'Bias term (Clemessy, msec)', 
      col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$bias_term), max(thetas$bias_term), length.out=500)
 lines(xs, dnorm(xs, mean = -20, sd = 10), lwd=3, col='red')
@@ -279,14 +315,25 @@ hist(thetas$ed50, freq=F,breaks = 50,main = '', xlab = 'ED_50', col = 'grey',
 xs=seq(0,2,length.out = 2000); 
 lines(xs, dnorm(xs,mean = prior_params$ed50_mu,sd = 1),col='red',lwd=3)
 
-hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma 1', col = 'grey',
-     ylab='', yaxt='n')
+hist(thetas$mu_normal, freq=F,breaks = 50,main = '', 
+     xlab = 'Decrease for steady state QRS (msec)', col = 'grey', ylab='', yaxt='n')
+xs=seq(0,10,length.out = 500); 
+lines(xs, dnorm(xs,mean = 5,sd = 1),col='red',lwd=3)
+
+hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma self-poisoning', 
+     col = 'grey',ylab='', yaxt='n')
 xs=seq(0,50,length.out = 500); 
 lines(xs, dnorm(xs,mean=25, sd=5),col='red',lwd=3)
 
-hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma 2', col = 'grey',
+hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
+     col = 'grey',  ylab='', yaxt='n')
+lines(xs, dnorm(xs,mean=2, sd=1),col='red',lwd=3)
+
+
+hist(thetas$sigma_i, freq=F,breaks = 50,main = '', 
+     xlab = 'Inter-individual sigma (healthy volunteers)', col = 'grey',
      ylab='', yaxt='n')
-lines(xs, dnorm(xs,mean=7, sd=3),col='red',lwd=3)
+lines(xs, dexp(xs,rate = 0.2),col='red',lwd=3)
 ```
 
 ![](Analysis_QRS_files/figure-html/priors_vs_posteriors_QRS-1.png)<!-- -->
