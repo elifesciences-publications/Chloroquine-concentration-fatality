@@ -181,30 +181,33 @@ thetas = extract(mod_full)
 par(mfrow=c(3,3),las=1, cex.lab=1.5)
 
 xs = seq(-5,5,length.out = 2000)
-hist(thetas$study_intercept[,1],freq = F,breaks = 50,main = '')
+hist(thetas$study_intercept[,1],freq = F,breaks = 50,main = '', col = 'grey',
+     xlab='Cohort 1: intercept term',border = NA,ylab = '', yaxt='n')
 lines(xs, dnorm(xs, mean = 0, sd = 0.5), lwd=3, col='red')
 
-hist(thetas$study_intercept[,2],freq = F,breaks = 50,main = '')
+hist(thetas$study_intercept[,2],freq = F,breaks = 50,main = '', col = 'grey',
+     xlab='Cohort 2: intercept term',border = NA,ylab = '', yaxt='n')
 lines(xs, dnorm(xs, mean = 0, sd = 0.5), lwd=3, col='red')
 
-hist(thetas$study_intercept[,3],freq = F,breaks = 50,main = '')
+hist(thetas$study_intercept[,3],freq = F,breaks = 50,main = '', col = 'grey',
+     xlab='Cohort 3: intercept term',border = NA,ylab = '', yaxt='n')
 lines(xs, dnorm(xs, mean = 0, sd = 0.5), lwd=3, col='red')
 
 hist(thetas$alpha, freq = F,breaks = 50,main = '', xlab = expression(alpha), col = 'grey',
-     ylab='', yaxt='n')
+     ylab='', yaxt='n',border = NA)
 xs = seq(min(thetas$alpha), max(thetas$alpha), length.out=500)
 lines(xs, dnorm(xs, mean = prior_params$mean_alpha, sd = prior_params$sd_alpha), lwd=3, col='red')
 hist(thetas$beta,freq=F,breaks = 50,main = '', xlab = expression(beta), col = 'grey',
-     ylab='', yaxt='n')
+     ylab='', yaxt='n',border = NA)
 xs = seq(min(thetas$beta), max(thetas$beta), length.out=500)
 lines(xs, dnorm(xs, mean = prior_params$mean_beta, sd = prior_params$sd_beta), lwd=3, col='red')
 
 hist(thetas$delta, freq=F,breaks = 50,main = '', xlab = expression(delta), col = 'grey',
-     ylab='', yaxt='n')
+     ylab='', yaxt='n',border = NA)
 xs=seq(0,2,length.out = 2000); lines(xs, dexp(xs,rate=7.8),col='red',lwd=3)
 
 hist(thetas$gamma, freq=F,breaks = 50,main = '', xlab = expression(gamma), col = 'grey',
-     ylab='', yaxt='n')
+     ylab='', yaxt='n',border = NA)
 xs=seq(0,1,length.out = 500); lines(xs, dnorm(xs,mean=0.7, sd=0.065),col='red',lwd=3)
 ```
 

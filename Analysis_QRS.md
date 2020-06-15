@@ -18,38 +18,37 @@ sessionInfo()
 ```
 
 ```
-## R version 3.6.3 (2020-02-29)
-## Platform: x86_64-w64-mingw32/x64 (64-bit)
-## Running under: Windows 10 x64 (build 17134)
+## R version 4.0.0 (2020-04-24)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.2
 ## 
 ## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
-## [1] LC_COLLATE=English_United States.1252 
-## [2] LC_CTYPE=English_United States.1252   
-## [3] LC_MONETARY=English_United States.1252
-## [4] LC_NUMERIC=C                          
-## [5] LC_TIME=English_United States.1252    
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-## [1] RColorBrewer_1.1-2   rstan_2.19.3         ggplot2_3.3.0       
-## [4] StanHeaders_2.21.0-1 gtools_3.8.1         knitr_1.28          
+## [1] RColorBrewer_1.1-2 rstan_2.19.3       ggplot2_3.3.0      StanHeaders_2.19.2
+## [5] gtools_3.8.2       knitr_1.28        
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] Rcpp_1.0.3         pillar_1.4.3       compiler_3.6.3     prettyunits_1.1.1 
-##  [5] tools_3.6.3        digest_0.6.25      pkgbuild_1.0.6     evaluate_0.14     
-##  [9] lifecycle_0.2.0    tibble_2.1.3       gtable_0.3.0       pkgconfig_2.0.3   
-## [13] rlang_0.4.5        cli_2.0.2          parallel_3.6.3     yaml_2.2.1        
-## [17] xfun_0.12          loo_2.2.0          gridExtra_2.3      withr_2.1.2       
-## [21] stringr_1.4.0      dplyr_0.8.5        stats4_3.6.3       grid_3.6.3        
-## [25] tidyselect_1.0.0   glue_1.3.1         inline_0.3.15      R6_2.4.1          
-## [29] processx_3.4.2     fansi_0.4.1        rmarkdown_2.1      purrr_0.3.3       
-## [33] callr_3.4.2        magrittr_1.5       matrixStats_0.56.0 ps_1.3.2          
-## [37] scales_1.1.0       htmltools_0.4.0    assertthat_0.2.1   colorspace_1.4-1  
-## [41] stringi_1.4.6      munsell_0.5.0      crayon_1.3.4
+##  [1] Rcpp_1.0.4.6       pillar_1.4.4       compiler_4.0.0     prettyunits_1.1.1 
+##  [5] tools_4.0.0        digest_0.6.25      pkgbuild_1.0.8     evaluate_0.14     
+##  [9] lifecycle_0.2.0    tibble_3.0.1       gtable_0.3.0       pkgconfig_2.0.3   
+## [13] rlang_0.4.6        cli_2.0.2          parallel_4.0.0     yaml_2.2.1        
+## [17] xfun_0.13          loo_2.2.0          gridExtra_2.3      withr_2.2.0       
+## [21] stringr_1.4.0      dplyr_0.8.5        vctrs_0.3.0        stats4_4.0.0      
+## [25] grid_4.0.0         tidyselect_1.1.0   glue_1.4.1         inline_0.3.15     
+## [29] R6_2.4.1           processx_3.4.2     fansi_0.4.1        rmarkdown_2.1     
+## [33] purrr_0.3.4        callr_3.4.3        magrittr_1.5       matrixStats_0.56.0
+## [37] ps_1.3.3           scales_1.1.1       ellipsis_0.3.1     htmltools_0.4.0   
+## [41] assertthat_0.2.1   colorspace_1.4-1   stringi_1.4.6      munsell_0.5.0     
+## [45] crayon_1.3.4
 ```
 
 Important parameters for the analysis/visualisation
@@ -348,7 +347,8 @@ for(i in 1:length(thetas$log_slope)){
           min_effect = thetas$min_effect[i], max_effect = thetas$max_effect[i]) -
     (thetas$min_effect[i] - thetas$mu_normal[i])
 }
-hist(vals, xlab='Estimated mean QRS widening at 3 umol/L (msec)',main='', yaxt='n',ylab='')
+hist(vals, xlab='Estimated mean QRS widening at 3 umol/L (msec)',main='', yaxt='n',
+     breaks = 50, ylab='',border = NA)
 ```
 
 ![](Analysis_QRS_files/figure-html/QRS_increase_3umolL-1.png)<!-- -->
@@ -366,55 +366,55 @@ writeLines(sprintf('At 3umol/L the median increase in QRS is %s (95%% CI is %s -
 
 ```r
 par(mfrow=c(3,4),las=1, cex.lab=1)
-hist(thetas$max_effect, freq = F,breaks = 50,main = '', 
+hist(thetas$max_effect, freq = F,breaks = 50,main = '', border = NA,
      xlab = 'Emax QRS (msec)', col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$max_effect), max(thetas$max_effect), length.out=500)
 lines(xs, dnorm(xs, mean = prior_params$max_effect_prior_mu, 
                 sd = prior_params$max_effect_prior_sd), lwd=3, col='red')
 
-hist(thetas$min_effect, freq = F,breaks = 50, main = '', 
+hist(thetas$min_effect, freq = F,breaks = 50, main = '', border = NA,
      xlab = 'Emin QRS (msec)', col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$min_effect), max(thetas$min_effect), length.out=500)
 lines(xs, dnorm(xs, mean = prior_params$min_effect_prior_mu, 
                 sd = prior_params$min_effect_prior_sd), lwd=3, col='red')
 
 hist(thetas$bias_term,freq=F,breaks = 50,main = '', xlab = 'Bias term (Clemessy, msec)', 
-     col = 'grey',ylab='', yaxt='n')
+     col = 'grey',ylab='', yaxt='n',border = NA)
 xs = seq(min(thetas$bias_term), max(thetas$bias_term), length.out=500)
 lines(xs, dnorm(xs, mean = prior_params$bias_term_prior_mu, sd = prior_params$bias_term_prior_sd), lwd=3, col='red')
 
 hist(thetas$ed50, freq=F,breaks = 50,main = '', xlab = 'ED_50 (log_10 concentration)', col = 'grey',
-     ylab='', yaxt='n')
+     ylab='', yaxt='n',border = NA)
 xs=seq(0,2,length.out = 2000); 
 lines(xs, dnorm(xs,mean = prior_params$ed50_mu,sd = prior_params$ed50_sd),col='red',lwd=3)
 
 hist(thetas$log_slope, freq=F,breaks = 50,main = '', xlab = 'Slope coefficient (on log scale)', 
-     col = 'grey',ylab='', yaxt='n')
+     col = 'grey',ylab='', yaxt='n',border = NA)
 xs=seq(0,2,length.out = 2000); 
 lines(xs, dnorm(xs,mean = prior_params$log_slope_prior_mu,sd = prior_params$log_slope_prior_sd),
       col='red',lwd=3)
 
 
-hist(thetas$mu_normal, freq=F,breaks = 50,main = '', 
+hist(thetas$mu_normal, freq=F,breaks = 50,main = '', border = NA,
      xlab = 'Decrease for steady state QRS (msec)', col = 'grey', ylab='', yaxt='n')
 xs=seq(0,10,length.out = 500); 
 lines(xs, dnorm(xs,mean = prior_params$mu_normal_mean,sd = prior_params$mu_normal_sd),col='red',lwd=3)
 
 hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma Clemessy', 
-     col = 'grey',ylab='', yaxt='n')
+     col = 'grey',ylab='', yaxt='n',border = NA)
 xs=seq(0,50,length.out = 500); 
 lines(xs, dnorm(xs,mean = 25, sd = 5),col='red',lwd=3)
 
 hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma Megarbane', 
-     col = 'grey',  ylab='', yaxt='n')
+     col = 'grey',  ylab='', yaxt='n',border = NA)
 lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
 
 hist(thetas$sigma3, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
-     col = 'grey',  ylab='', yaxt='n')
+     col = 'grey',  ylab='', yaxt='n',border = NA)
 lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
 
 
-hist(thetas$sigma_i, freq=F,breaks = 50,main = '', 
+hist(thetas$sigma_i, freq=F,breaks = 50,main = '', border = NA,
      xlab = 'Inter-individual sigma (healthy volunteers)', col = 'grey',
      ylab='', yaxt='n')
 lines(xs, dexp(xs,rate = prior_params$sigma_i_prior),col='red',lwd=3)
