@@ -42,15 +42,16 @@ Data from Riou were extracted from published graph (see Figure 3 in NEJM Riou et
 pooled_data = read.csv('Pooled_QRS_data.csv')
 
 # do the conversion from plasma to whole blood for the healthy volunteers
-# study = 1 is self-poisoning
-# study = 2 is healthy volunteers
-pooled_data$CQ_uMol[pooled_data$study==2] =
-  pooled_data$CQ_uMol[pooled_data$study==2]*plasma_to_whole_blood_ratio
+# study = 1 is self-poisoning (Clemessy)
+# study = 2 is self-poisoning (Megarbane)
+# study = 3 is healthy volunteers
+pooled_data$CQ_uMol[pooled_data$study==3] =
+  pooled_data$CQ_uMol[pooled_data$study==3]*plasma_to_whole_blood_ratio
 ```
 
 ```{r Sfig_raw_QRS_data, fig.width=10, fig.height=9}
 # some nice colors for the plots
-col_study = RColorBrewer::brewer.pal(n = 3, name = 'Set1')[c(1,3)]
+col_study = RColorBrewer::brewer.pal(n = 3, name = 'Set1')
 
 ind_clem = pooled_data$study==1
 # jitter the self-poisoning QRS data
@@ -62,10 +63,12 @@ plot(log10(pooled_data$CQ_uMol), ys+pooled_data$QRS, xaxt='n',
      xlab=expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')), 
      pch = pooled_data$died+1,main='Raw QRS data (no bias or outlier adjustement)')
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
-legend('topleft',  pch = c(1,1,1,2),
-       legend = c('Healthy volunteers (620 mg base)','Clemessy',
+legend('topleft',  pch = c(1,1,1,1,2),
+       legend = c('Healthy volunteers (620 mg base)',
+                  'Self-poisoning (Clemessy)',
+                  'Self-poisoning (Megarbane)',
                   'Survivors','Fatal cases'),
-       col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
+       col = c(col_study[c(3,1,2)],'black','black'), inset = 0.03)
 abline(h=150, v=1, lty=2)
 ```
 
@@ -91,7 +94,7 @@ data {
   real log10_conc[N1];
   real QRS_drug[N1];
   real QRS_nodrug[N2];
-  int<lower=1,upper=2> study[N1]; // 1 is self-poisoning; 2 is healthy volunteers
+  int<lower=1,upper=3> study[N1]; // 1 is Clemessy self-poisoning; 2 is Megarbane self-poisoning; 3 is healthy volunteers
   
   // prior parameters
   real ed50_mu;
@@ -119,6 +122,7 @@ parameters {
   real mu_normal; // the value min_effect - mu_normal is mean normal QRS value
   real<lower=0> sigma1;
   real<lower=0> sigma2;
+  real<lower=0> sigma3;
   real<lower=0> sigma_i; // for inter-individual variability in healthy volunteers
 }
 
@@ -132,9 +136,10 @@ model {
   mu_i ~ normal(0,sigma_i);
   mu_normal ~ normal(mu_normal_mean,mu_normal_sd);
   
-  sigma_i ~ exponential(sigma_i_prior); // prior standard deviation is +/- 5 msec of IIV
+  sigma_i ~ exponential(sigma_i_prior); 
   sigma1 ~ normal(25,5);
-  sigma2 ~ normal(2,1);
+  sigma2 ~ normal(15,5);
+  sigma3 ~ normal(2,1);
   
   // Likelihood
   for (j in 1:N1){
@@ -142,12 +147,16 @@ model {
     QRS_pred = sigmoid(log10_conc[j], ed50, log_slope, max_effect, min_effect);
     if(study[j] == 1){
       QRS_drug[j] ~ normal(QRS_pred + bias_term, sigma1);
-    } else {
-      QRS_drug[j] ~ normal(QRS_pred + mu_i[ID1[j]], sigma2);
+    } 
+    if(study[j] == 2){
+      QRS_drug[j] ~ normal(QRS_pred, sigma2);
+    }
+    if(study[j] == 3) {
+      QRS_drug[j] ~ normal(QRS_pred + mu_i[ID1[j]], sigma3);
     }
   }
   for (j in 1:N2){
-    QRS_nodrug[j] ~ normal(min_effect - mu_normal + mu_i[ID2[j]], sigma2);
+    QRS_nodrug[j] ~ normal(min_effect - mu_normal + mu_i[ID2[j]], sigma3);
   }
 }
 "
@@ -220,13 +229,13 @@ for(i in 1:length(thetas$log_slope)){
                    log_slope = (thetas$log_slope[i]),
                    max_effect = (thetas$max_effect[i]), 
                    min_effect = (thetas$min_effect[i])) + 
-    rnorm(1,0,thetas$sigma1[i])
+    rnorm(1,0,thetas$sigma2[i])
   
   ys2[,i] = sigmoid(log10_conc = xs2, ed50 = (thetas$ed50[i]),
                    log_slope = (thetas$log_slope[i]),
                    max_effect = (thetas$max_effect[i]), 
                    min_effect = (thetas$min_effect[i])) + 
-    rnorm(1,0,thetas$sigma2[i]) + rnorm(1,0,thetas$sigma_i)
+    rnorm(1,0,thetas$sigma3[i]) + rnorm(1,0,thetas$sigma_i)
   
   ys3[,i] = sigmoid(log10_conc = xs3, ed50 = (thetas$ed50[i]),
                    log_slope = (thetas$log_slope[i]),
@@ -249,9 +258,10 @@ plot(x = log10(pooled_data$CQ_uMol), panel.first = grid(),
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
 legend('topleft',  pch = c(1,1,1,2),
        legend = c('Healthy volunteers (620 mg base)',
-                  'Self-poisoning',
+                  'Self-poisoning (Clemessy)',
+                  'Self-poisoning (Megarbane)',
                   'Survivors','Fatal cases'),
-       col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
+       col = c(col_study[c(3,1,2)],'black','black'), inset = 0.03)
 
 QRS_normal = array(dim = max(pooled_data$ID))
 for(i in 1:max(pooled_data$ID)){
@@ -269,11 +279,11 @@ polygon(x = c(-3,3,3,-3),y = c(qs_estimated[1],qs_estimated[1],qs_estimated[2],q
 abline(h=150, v=1, lty=2)
 lines(xs3,rowMeans(ys3),lwd=3)
 
-lines(xs1,apply(ys1,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[1])
-lines(xs1,apply(ys1,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[1])
+lines(xs1,apply(ys1,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[2])
+lines(xs1,apply(ys1,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[2])
 
-lines(xs2,apply(ys2,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[2])
-lines(xs2,apply(ys2,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[2])
+lines(xs2,apply(ys2,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[3])
+lines(xs2,apply(ys2,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[3])
 
 
 abline(h=qs_estimated[3], lty=1, col='grey',lwd=3)
@@ -302,7 +312,7 @@ writeLines(sprintf('At 3umol/L the median increase in QRS is %s (95%% CI is %s -
 
 
 ```{r priors_vs_posteriors_QRS}
-par(mfrow=c(3,3),las=1, cex.lab=1)
+par(mfrow=c(3,4),las=1, cex.lab=1)
 hist(thetas$max_effect, freq = F,breaks = 50,main = '', 
      xlab = 'Emax QRS (msec)', col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$max_effect), max(thetas$max_effect), length.out=500)
@@ -337,14 +347,19 @@ hist(thetas$mu_normal, freq=F,breaks = 50,main = '',
 xs=seq(0,10,length.out = 500); 
 lines(xs, dnorm(xs,mean = prior_params$mu_normal_mean,sd = prior_params$mu_normal_sd),col='red',lwd=3)
 
-hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma self-poisoning', 
+hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma Clemessy', 
      col = 'grey',ylab='', yaxt='n')
 xs=seq(0,50,length.out = 500); 
 lines(xs, dnorm(xs,mean = 25, sd = 5),col='red',lwd=3)
 
-hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
+hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma Megarbane', 
      col = 'grey',  ylab='', yaxt='n')
 lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
+
+hist(thetas$sigma3, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
+     col = 'grey',  ylab='', yaxt='n')
+lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
+
 
 hist(thetas$sigma_i, freq=F,breaks = 50,main = '', 
      xlab = 'Inter-individual sigma (healthy volunteers)', col = 'grey',
@@ -354,10 +369,10 @@ lines(xs, dexp(xs,rate = prior_params$sigma_i_prior),col='red',lwd=3)
 
 
 ```{r}
-pooled_data = dplyr::filter(pooled_data, study==1)
+pooled_data = dplyr::filter(pooled_data, study %in% c(1,2))
 table( (pooled_data$QRS-mean(thetas$bias_term)*as.numeric(pooled_data$study==1)) > 150, pooled_data$CQ_uMol>10)
 
-mod=glm(died ~ log(CQ_uMol) + QRS, family = binomial, data = pooled_data)
+mod=glm(died ~ log(CQ_uMol) + QRS + study, family = binomial, data = pooled_data)
 summary(mod)
 
 writeLines(sprintf('The odds ratio is %s', round(exp(10*0.022706),1)))

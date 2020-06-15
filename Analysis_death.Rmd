@@ -80,6 +80,9 @@ writeLines(sprintf('%s patients had their peak observed in hospital', length(ind
 hist(log10(pooled_data$CQumolL_Peak[ind_increase])-
        log10(pooled_data$CQumolL_Admission[ind_increase]), main='', 
      xlab='delta: increase in log concentration in those who peaked at hospital')
+
+1/mean(log10(pooled_data$CQumolL_Peak[ind_increase])-
+       log10(pooled_data$CQumolL_Admission[ind_increase]))
 ```
 
 ## Stan model
@@ -93,6 +96,9 @@ data {
    vector[N_peak] log_conc_peak;
    int<lower=0,upper=1> y_admission[N_admission];
    int<lower=0,upper=1> y_peak[N_peak];
+   // 1 is Megarbane self-poisoning; 0 otherwise (ECMO in Megarbane series)
+   int<lower=0,upper=2> study_adm[N_admission];
+   int<lower=0,upper=2> study_peak[N_peak];
    // Prior parameters
    real mean_alpha;
    real sd_alpha;
@@ -104,16 +110,39 @@ parameters {
    real beta;  // Concentration coefficient in logistic regression
    real<lower=0> delta; // Mean increase in chloroquine concentrations on the log scale
    real<lower=0,upper=1> gamma; // Fraction of chloroquine in measured concentration
+   real study_intercept[3];
 }
 model {
   //Prior
   alpha ~ normal(mean_alpha,sd_alpha);
   beta ~ normal(mean_beta,sd_beta);
   gamma ~ normal(0.7, 0.065); // Prior is estimated from a large CQ&DCQ dataset
-  delta ~ exponential(7.8); // rate parameter estimated from the observed peak vs admission
+  delta ~ exponential(8);     // rate parameter estimated from the observed peak vs admission
+  study_intercept ~ normal(0,.5);
+
   // Likelihood
-  y_peak ~ bernoulli_logit(alpha + beta * (log(0.7 * (exp(log_conc_peak)))));
-  y_admission ~ bernoulli_logit(alpha + beta * (log(0.7 * (exp(log_conc_admission))) + delta));
+  for(j in 1:N_peak){
+    if(study_peak[j]==0){
+        y_peak[j] ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_peak[j])))) + study_intercept[1]);
+    } 
+    if(study_peak[j]==1){
+        y_peak[j] ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_peak[j])))) + study_intercept[2]);
+    } 
+    if(study_peak[j]==2){
+        y_peak[j] ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_peak[j])))) + study_intercept[3]);
+    }
+  }
+  for(j in 1:N_admission){
+    if(study_adm[j]==0){
+        y_admission[j] ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_admission[j]))) + delta) + study_intercept[1]);
+    }
+    if(study_adm[j]==1){
+        y_admission[j] ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_admission[j]))) + delta) + study_intercept[2]);
+    } 
+    if(study_adm[j]==2) {
+        y_admission[j] ~ bernoulli_logit(alpha + beta * (log(gamma * (exp(log_conc_admission[j]))) + delta) + study_intercept[3]);
+    }
+  }
 }
 '
 if(RUN_MODELS) log_reg = stan_model(model_code = logistic_model)
@@ -122,8 +151,8 @@ if(RUN_MODELS) log_reg = stan_model(model_code = logistic_model)
 ## Fit main model to prospective data
 
 ```{r}
-N_iter = 10^5
-N_thin = 100
+N_iter = 10^6
+N_thin = 1000
 N_chains = 8
 #options(mc.cores = N_chains) - broken in current R version!
 prior_params = list(mean_alpha = -15, sd_alpha=1, mean_beta=4, sd_beta=1)
@@ -133,7 +162,9 @@ CQ_data = list(N_admission = as.integer(sum(!ind_increase)),
                log_conc_admission = log(pooled_data$CQumolL_Admission[!ind_increase]),
                log_conc_peak = log(pooled_data$CQumolL_Peak[ind_increase]),
                y_admission = as.integer(pooled_data$Outcome[!ind_increase]),
-               y_peak = as.integer(pooled_data$Outcome[ind_increase]))
+               y_peak = as.integer(pooled_data$Outcome[ind_increase]),
+               study_adm = as.integer(pooled_data$indicator[!ind_increase]),
+               study_peak = as.integer(pooled_data$indicator[ind_increase]))
 if(RUN_MODELS){
   mod_full = sampling(log_reg,
                       data=c(CQ_data, prior_params),
@@ -147,7 +178,18 @@ if(RUN_MODELS){
 
 ```{r priors_vs_posteriors_death}
 thetas = extract(mod_full)
-par(mfrow=c(2,2),las=1, cex.lab=1.5)
+par(mfrow=c(3,3),las=1, cex.lab=1.5)
+
+xs = seq(-5,5,length.out = 2000)
+hist(thetas$study_intercept[,1],freq = F,breaks = 50,main = '')
+lines(xs, dnorm(xs, mean = 0, sd = 0.5), lwd=3, col='red')
+
+hist(thetas$study_intercept[,2],freq = F,breaks = 50,main = '')
+lines(xs, dnorm(xs, mean = 0, sd = 0.5), lwd=3, col='red')
+
+hist(thetas$study_intercept[,3],freq = F,breaks = 50,main = '')
+lines(xs, dnorm(xs, mean = 0, sd = 0.5), lwd=3, col='red')
+
 hist(thetas$alpha, freq = F,breaks = 50,main = '', xlab = expression(alpha), col = 'grey',
      ylab='', yaxt='n')
 xs = seq(min(thetas$alpha), max(thetas$alpha), length.out=500)
@@ -193,15 +235,20 @@ ind_plasma = grep(pattern = 'plasma', x = unlist(dimnames(Cmax_pop)[1]))
 # whole blood model
 ind_WB = grep(pattern = 'WB', x = unlist(dimnames(Cmax_pop)[1]))
 Cmax_pop[ind_plasma,,,] = Cmax_pop[ind_plasma,,,]*plasma_to_whole_blood_ratio
-cols = brewer.pal(8, name = 'Dark2')[c(6,4,7,8)]
-cols = c(cols[1], cols[2], cols[3],cols[1],cols[3],cols[4])
+
+ind_re_arrange = c(2,1,4,3,5,6)
+ind_re_arrange = c(ind_re_arrange, ind_re_arrange+6)
+Cmax_pop = Cmax_pop[ind_re_arrange, ,,]
+
+cols = brewer.pal(8, name = 'Dark2')[c(4,7,5,8)]
+cols = c(cols[1], cols[2], cols[2],cols[3],cols[3],cols[4])
 cols=c(cols,cols)
 cnames = unlist(dimnames(Cmax_pop)[1])
 
-legend_names = c('310mg twice daily (10 days)',
-                 '600mg twice daily (10 days)',
-                 '310mg twice daily (7 days)', 
+legend_names = c('600mg twice daily (10 days)',
+                 '310mg twice daily (10 days)',
                  'Weight-based (10 days)',
+                 '310mg twice daily (7 days)', 
                  'Weight-based (7 days)',
                  'Malaria treatment (3 days)')
 
@@ -252,7 +299,7 @@ for(i in 2:dim(Cmax_pop)[1]){
 ```
 
 
-
+Compute summaries (percent above 10umol, mean fatality, confidence intervals)
 
 ```{r}
 q = 1
@@ -300,12 +347,13 @@ for(i in 1:dim(Cmax_pop)[1]){
 ```
 
 
-Hoglund et al malaria patient whole blood model: predictions for Cmax greater than threshold and per thousand mortality
+Using the Hoglund et al malaria patient whole blood model: predictions for Cmax greater than threshold and per thousand mortality. This is Figure 2 in the paper.
+
 ```{r Fig2, fig.width=10, fig.height=9}
 # Set the indices to the simulations from the whole blood model
 ind_model = ind_WB
 
-ltys = rep(c(1,1,1,2,2,1),2)
+ltys = rep(c(1,1,2,1,2,1),2)
 lwds = c(rep(3,6), rep(2,6))
 tick_points = c(1:19,seq(20,100,by=10))
 x_points = c(2,3,5,10,13,20)
@@ -356,20 +404,23 @@ mtext(text = 'Predicted mortality per thousand',side = 2,line = 4.5,las=3,cex=1.
 mtext(text = 'C',side = 3,cex=1.5,adj = 0)
 ```
 
+Figure 1 in the paper:
 
 ```{r Fig1, fig.width=9, fig.height=9}
 x_points = c(1,3,10,20,100)
+
+my_cols_data = adjustcolor(brewer.pal(n = 9,'YlOrRd')[c(4,8)],alpha.f = .6)
 
 par(mfrow=c(2,1),las=1, cex.lab=1.5, cex.axis=1.5, family='serif',bty='n',mar=c(5,6,2,2))
 hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]), xlim = log10(c(1,100)),
      main='', breaks = seq(-1.25,2.125,by=.25/2),ylab='',
      xaxt='n',
      xlab = expression(paste('Whole blood chloroquine+desethychloroquine concentration (',mu,'mol/L)')), 
-     col=adjustcolor('blue',alpha.f = .5))
+     col= my_cols_data[1])
 hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==1]), 
-     breaks = seq(-1,2,by=.25/2), add=T, col=adjustcolor('red',alpha.f = .5))
+     breaks = seq(-1,2,by=.25/2), add=T, col=my_cols_data[2])
 mtext(text = 'Number of patients',side = 2,line = 4.5,las=3,cex=1.5)
-legend('topleft',  fill=adjustcolor(c('blue','red'),alpha.f = .5),
+legend('topleft',  fill = my_cols_data,
        legend = c('Survivors','Fatal cases'),inset=0.02, cex=1.5, bty='n',title = 'Outcome')
 axis(1, at=log10(x_points),labels = x_points)
 axis(1, at = log10(tick_points), labels = NA, tick = T)
@@ -421,14 +472,6 @@ Healthy volunteer model based on plasma measurements: predictions for Cmax great
 # Set the indices to the simulations from the whole blood model
 ind_model = ind_plasma
 
-ltys = rep(c(1,1,1,2,2,1),2)
-lwds = c(rep(3,6), rep(2,6))
-tick_points = c(2:19,seq(20,100,by=10))
-x_points = c(2,3,5,10,13,20)
-legend_names = c('310mg daily (10 days)','600mg twice daily (10 days)',
-                 '310mg daily (7 days)', 
-                 'Weight-based (10 days)','Weight-based (7 days)',
-                 'Malaria treatment (3 days)')
 par(las=1, bty='n', family = 'serif',cex.lab=1.5, cex.axis=1.5,mar=c(5,6,2,2))
 layout(mat = matrix(c(1,1,2,3), nrow = 2, byrow = T))
 
@@ -484,11 +527,11 @@ hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==0]),
      main='', breaks = seq(-1.25,2.125,by=.25/2),ylab='',
      xaxt='n', xlim = log10(c(1,100)),
      xlab = expression(paste('Whole blood chloroquine+desethychloroquine concentration (',mu,'mol/L)')), 
-     col=adjustcolor('blue',alpha.f = .5))
+     col=my_cols_data[1])
 hist(log10(pooled_data$CQumolL_Admission[pooled_data$Outcome==1]), 
-     breaks = seq(-1,2,by=.25/2), add=T, col=adjustcolor('red',alpha.f = .5))
+     breaks = seq(-1,2,by=.25/2), add=T, col=my_cols_data[2])
 mtext(text = 'Number of patients',side = 2,line = 4.5,las=3,cex=1.5)
-legend('topleft',  fill=adjustcolor(c('blue','red'),alpha.f = .5),
+legend('topleft',  fill=my_cols_data,
        legend = c('Survivors','Fatal cases'),inset=0.02, cex=1.5, bty='n',title = 'Outcome')
 axis(1, at=log10(x_points),labels = x_points)
 axis(1, at = log10(tick_points), labels = NA, tick = T)

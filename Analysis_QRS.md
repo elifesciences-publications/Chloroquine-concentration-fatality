@@ -18,37 +18,38 @@ sessionInfo()
 ```
 
 ```
-## R version 4.0.0 (2020-04-24)
-## Platform: x86_64-apple-darwin17.0 (64-bit)
-## Running under: macOS Catalina 10.15.2
+## R version 3.6.3 (2020-02-29)
+## Platform: x86_64-w64-mingw32/x64 (64-bit)
+## Running under: Windows 10 x64 (build 17134)
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
-## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## [1] LC_COLLATE=English_United States.1252 
+## [2] LC_CTYPE=English_United States.1252   
+## [3] LC_MONETARY=English_United States.1252
+## [4] LC_NUMERIC=C                          
+## [5] LC_TIME=English_United States.1252    
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-## [1] RColorBrewer_1.1-2 rstan_2.19.3       ggplot2_3.3.0      StanHeaders_2.19.2
-## [5] gtools_3.8.2       knitr_1.28        
+## [1] RColorBrewer_1.1-2   rstan_2.19.3         ggplot2_3.3.0       
+## [4] StanHeaders_2.21.0-1 gtools_3.8.1         knitr_1.28          
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] Rcpp_1.0.4.6       pillar_1.4.4       compiler_4.0.0     prettyunits_1.1.1 
-##  [5] tools_4.0.0        digest_0.6.25      pkgbuild_1.0.8     evaluate_0.14     
-##  [9] lifecycle_0.2.0    tibble_3.0.1       gtable_0.3.0       pkgconfig_2.0.3   
-## [13] rlang_0.4.6        cli_2.0.2          parallel_4.0.0     yaml_2.2.1        
-## [17] xfun_0.13          loo_2.2.0          gridExtra_2.3      withr_2.2.0       
-## [21] stringr_1.4.0      dplyr_0.8.5        vctrs_0.3.0        stats4_4.0.0      
-## [25] grid_4.0.0         tidyselect_1.1.0   glue_1.4.1         inline_0.3.15     
-## [29] R6_2.4.1           processx_3.4.2     fansi_0.4.1        rmarkdown_2.1     
-## [33] purrr_0.3.4        callr_3.4.3        magrittr_1.5       matrixStats_0.56.0
-## [37] ps_1.3.3           scales_1.1.1       ellipsis_0.3.1     htmltools_0.4.0   
-## [41] assertthat_0.2.1   colorspace_1.4-1   stringi_1.4.6      munsell_0.5.0     
-## [45] crayon_1.3.4
+##  [1] Rcpp_1.0.3         pillar_1.4.3       compiler_3.6.3     prettyunits_1.1.1 
+##  [5] tools_3.6.3        digest_0.6.25      pkgbuild_1.0.6     evaluate_0.14     
+##  [9] lifecycle_0.2.0    tibble_2.1.3       gtable_0.3.0       pkgconfig_2.0.3   
+## [13] rlang_0.4.5        cli_2.0.2          parallel_3.6.3     yaml_2.2.1        
+## [17] xfun_0.12          loo_2.2.0          gridExtra_2.3      withr_2.1.2       
+## [21] stringr_1.4.0      dplyr_0.8.5        stats4_3.6.3       grid_3.6.3        
+## [25] tidyselect_1.0.0   glue_1.3.1         inline_0.3.15      R6_2.4.1          
+## [29] processx_3.4.2     fansi_0.4.1        rmarkdown_2.1      purrr_0.3.3       
+## [33] callr_3.4.2        magrittr_1.5       matrixStats_0.56.0 ps_1.3.2          
+## [37] scales_1.1.0       htmltools_0.4.0    assertthat_0.2.1   colorspace_1.4-1  
+## [41] stringi_1.4.6      munsell_0.5.0      crayon_1.3.4
 ```
 
 Important parameters for the analysis/visualisation
@@ -68,16 +69,17 @@ Data from Riou were extracted from published graph (see Figure 3 in NEJM Riou et
 pooled_data = read.csv('Pooled_QRS_data.csv')
 
 # do the conversion from plasma to whole blood for the healthy volunteers
-# study = 1 is self-poisoning
-# study = 2 is healthy volunteers
-pooled_data$CQ_uMol[pooled_data$study==2] =
-  pooled_data$CQ_uMol[pooled_data$study==2]*plasma_to_whole_blood_ratio
+# study = 1 is self-poisoning (Clemessy)
+# study = 2 is self-poisoning (Megarbane)
+# study = 3 is healthy volunteers
+pooled_data$CQ_uMol[pooled_data$study==3] =
+  pooled_data$CQ_uMol[pooled_data$study==3]*plasma_to_whole_blood_ratio
 ```
 
 
 ```r
 # some nice colors for the plots
-col_study = RColorBrewer::brewer.pal(n = 3, name = 'Set1')[c(1,3)]
+col_study = RColorBrewer::brewer.pal(n = 3, name = 'Set1')
 
 ind_clem = pooled_data$study==1
 # jitter the self-poisoning QRS data
@@ -89,10 +91,12 @@ plot(log10(pooled_data$CQ_uMol), ys+pooled_data$QRS, xaxt='n',
      xlab=expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')), 
      pch = pooled_data$died+1,main='Raw QRS data (no bias or outlier adjustement)')
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
-legend('topleft',  pch = c(1,1,1,2),
-       legend = c('Healthy volunteers (620 mg base)','Clemessy',
+legend('topleft',  pch = c(1,1,1,1,2),
+       legend = c('Healthy volunteers (620 mg base)',
+                  'Self-poisoning (Clemessy)',
+                  'Self-poisoning (Megarbane)',
                   'Survivors','Fatal cases'),
-       col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
+       col = c(col_study[c(3,1,2)],'black','black'), inset = 0.03)
 abline(h=150, v=1, lty=2)
 ```
 
@@ -121,7 +125,7 @@ data {
   real log10_conc[N1];
   real QRS_drug[N1];
   real QRS_nodrug[N2];
-  int<lower=1,upper=2> study[N1]; // 1 is self-poisoning; 2 is healthy volunteers
+  int<lower=1,upper=3> study[N1]; // 1 is Clemessy self-poisoning; 2 is Megarbane self-poisoning; 3 is healthy volunteers
   
   // prior parameters
   real ed50_mu;
@@ -149,6 +153,7 @@ parameters {
   real mu_normal; // the value min_effect - mu_normal is mean normal QRS value
   real<lower=0> sigma1;
   real<lower=0> sigma2;
+  real<lower=0> sigma3;
   real<lower=0> sigma_i; // for inter-individual variability in healthy volunteers
 }
 
@@ -162,9 +167,10 @@ model {
   mu_i ~ normal(0,sigma_i);
   mu_normal ~ normal(mu_normal_mean,mu_normal_sd);
   
-  sigma_i ~ exponential(sigma_i_prior); // prior standard deviation is +/- 5 msec of IIV
+  sigma_i ~ exponential(sigma_i_prior); 
   sigma1 ~ normal(25,5);
-  sigma2 ~ normal(2,1);
+  sigma2 ~ normal(15,5);
+  sigma3 ~ normal(2,1);
   
   // Likelihood
   for (j in 1:N1){
@@ -172,12 +178,16 @@ model {
     QRS_pred = sigmoid(log10_conc[j], ed50, log_slope, max_effect, min_effect);
     if(study[j] == 1){
       QRS_drug[j] ~ normal(QRS_pred + bias_term, sigma1);
-    } else {
-      QRS_drug[j] ~ normal(QRS_pred + mu_i[ID1[j]], sigma2);
+    } 
+    if(study[j] == 2){
+      QRS_drug[j] ~ normal(QRS_pred, sigma2);
+    }
+    if(study[j] == 3) {
+      QRS_drug[j] ~ normal(QRS_pred + mu_i[ID1[j]], sigma3);
     }
   }
   for (j in 1:N2){
-    QRS_nodrug[j] ~ normal(min_effect - mu_normal + mu_i[ID2[j]], sigma2);
+    QRS_nodrug[j] ~ normal(min_effect - mu_normal + mu_i[ID2[j]], sigma3);
   }
 }
 "
@@ -252,13 +262,13 @@ for(i in 1:length(thetas$log_slope)){
                    log_slope = (thetas$log_slope[i]),
                    max_effect = (thetas$max_effect[i]), 
                    min_effect = (thetas$min_effect[i])) + 
-    rnorm(1,0,thetas$sigma1[i])
+    rnorm(1,0,thetas$sigma2[i])
   
   ys2[,i] = sigmoid(log10_conc = xs2, ed50 = (thetas$ed50[i]),
                    log_slope = (thetas$log_slope[i]),
                    max_effect = (thetas$max_effect[i]), 
                    min_effect = (thetas$min_effect[i])) + 
-    rnorm(1,0,thetas$sigma2[i]) + rnorm(1,0,thetas$sigma_i)
+    rnorm(1,0,thetas$sigma3[i]) + rnorm(1,0,thetas$sigma_i)
   
   ys3[,i] = sigmoid(log10_conc = xs3, ed50 = (thetas$ed50[i]),
                    log_slope = (thetas$log_slope[i]),
@@ -282,9 +292,10 @@ plot(x = log10(pooled_data$CQ_uMol), panel.first = grid(),
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
 legend('topleft',  pch = c(1,1,1,2),
        legend = c('Healthy volunteers (620 mg base)',
-                  'Self-poisoning',
+                  'Self-poisoning (Clemessy)',
+                  'Self-poisoning (Megarbane)',
                   'Survivors','Fatal cases'),
-       col = c(col_study[c(2,1)],'black','black'), inset = 0.03)
+       col = c(col_study[c(3,1,2)],'black','black'), inset = 0.03)
 
 QRS_normal = array(dim = max(pooled_data$ID))
 for(i in 1:max(pooled_data$ID)){
@@ -302,11 +313,11 @@ polygon(x = c(-3,3,3,-3),y = c(qs_estimated[1],qs_estimated[1],qs_estimated[2],q
 abline(h=150, v=1, lty=2)
 lines(xs3,rowMeans(ys3),lwd=3)
 
-lines(xs1,apply(ys1,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[1])
-lines(xs1,apply(ys1,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[1])
+lines(xs1,apply(ys1,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[2])
+lines(xs1,apply(ys1,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[2])
 
-lines(xs2,apply(ys2,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[2])
-lines(xs2,apply(ys2,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[2])
+lines(xs2,apply(ys2,1,quantile,probs=0.025),lwd=2,lty=2, col=col_study[3])
+lines(xs2,apply(ys2,1,quantile,probs=0.975),lwd=2,lty=2, col=col_study[3])
 
 
 abline(h=qs_estimated[3], lty=1, col='grey',lwd=3)
@@ -325,7 +336,7 @@ quantile(thetas$mu_normal, probs = c(0.025,.5,0.975))
 
 ```
 ##     2.5%      50%    97.5% 
-## 1.622899 2.792322 3.915087
+## 1.654259 2.793389 3.928852
 ```
 
 Increase in QRS at 3 umol/L
@@ -348,13 +359,13 @@ writeLines(sprintf('At 3umol/L the median increase in QRS is %s (95%% CI is %s -
 ```
 
 ```
-## At 3umol/L the median increase in QRS is 6.6 (95% CI is 5.5 - 7.8)
+## At 3umol/L the median increase in QRS is 6.7 (95% CI is 5.5 - 7.8)
 ```
 
 
 
 ```r
-par(mfrow=c(3,3),las=1, cex.lab=1)
+par(mfrow=c(3,4),las=1, cex.lab=1)
 hist(thetas$max_effect, freq = F,breaks = 50,main = '', 
      xlab = 'Emax QRS (msec)', col = 'grey',ylab='', yaxt='n')
 xs = seq(min(thetas$max_effect), max(thetas$max_effect), length.out=500)
@@ -389,14 +400,19 @@ hist(thetas$mu_normal, freq=F,breaks = 50,main = '',
 xs=seq(0,10,length.out = 500); 
 lines(xs, dnorm(xs,mean = prior_params$mu_normal_mean,sd = prior_params$mu_normal_sd),col='red',lwd=3)
 
-hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma self-poisoning', 
+hist(thetas$sigma1, freq=F,breaks = 50,main = '', xlab = 'Sigma Clemessy', 
      col = 'grey',ylab='', yaxt='n')
 xs=seq(0,50,length.out = 500); 
 lines(xs, dnorm(xs,mean = 25, sd = 5),col='red',lwd=3)
 
-hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
+hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma Megarbane', 
      col = 'grey',  ylab='', yaxt='n')
 lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
+
+hist(thetas$sigma3, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
+     col = 'grey',  ylab='', yaxt='n')
+lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
+
 
 hist(thetas$sigma_i, freq=F,breaks = 50,main = '', 
      xlab = 'Inter-individual sigma (healthy volunteers)', col = 'grey',
@@ -409,46 +425,48 @@ lines(xs, dexp(xs,rate = prior_params$sigma_i_prior),col='red',lwd=3)
 
 
 ```r
-pooled_data = dplyr::filter(pooled_data, study==1)
+pooled_data = dplyr::filter(pooled_data, study %in% c(1,2))
 table( (pooled_data$QRS-mean(thetas$bias_term)*as.numeric(pooled_data$study==1)) > 150, pooled_data$CQ_uMol>10)
 ```
 
 ```
 ##        
 ##         FALSE TRUE
-##   FALSE    89  129
-##   TRUE      1   27
+##   FALSE   107  146
+##   TRUE      1   36
 ```
 
 ```r
-mod=glm(died ~ log(CQ_uMol) + QRS, family = binomial, data = pooled_data)
+mod=glm(died ~ log(CQ_uMol) + QRS + study, family = binomial, data = pooled_data)
 summary(mod)
 ```
 
 ```
 ## 
 ## Call:
-## glm(formula = died ~ log(CQ_uMol) + QRS, family = binomial, data = pooled_data)
+## glm(formula = died ~ log(CQ_uMol) + QRS + study, family = binomial, 
+##     data = pooled_data)
 ## 
 ## Deviance Residuals: 
-##      Min        1Q    Median        3Q       Max  
-## -1.52305  -0.35649  -0.18333  -0.06684   2.91702  
+##     Min       1Q   Median       3Q      Max  
+## -1.4870  -0.3858  -0.2241  -0.1099   2.8157  
 ## 
 ## Coefficients:
-##                Estimate Std. Error z value Pr(>|z|)    
-## (Intercept)  -11.661419   1.999345  -5.833 5.46e-09 ***
-## log(CQ_uMol)   2.350806   0.652758   3.601 0.000317 ***
-## QRS            0.022706   0.008044   2.823 0.004761 ** 
+##               Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)  -9.561850   1.551113  -6.165 7.07e-10 ***
+## log(CQ_uMol)  1.372529   0.480302   2.858  0.00427 ** 
+## QRS           0.030411   0.007518   4.045 5.23e-05 ***
+## study        -0.088381   0.575409  -0.154  0.87793    
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
-##     Null deviance: 157.29  on 245  degrees of freedom
-## Residual deviance: 101.16  on 243  degrees of freedom
-## AIC: 107.16
+##     Null deviance: 197.19  on 289  degrees of freedom
+## Residual deviance: 133.44  on 286  degrees of freedom
+## AIC: 141.44
 ## 
-## Number of Fisher Scoring iterations: 7
+## Number of Fisher Scoring iterations: 6
 ```
 
 ```r
