@@ -406,8 +406,8 @@ xs=seq(0,50,length.out = 500);
 lines(xs, dnorm(xs,mean = 25, sd = 5),col='red',lwd=3)
 
 hist(thetas$sigma2, freq=F,breaks = 50,main = '', xlab = 'Sigma Megarbane', 
-     col = 'grey',  ylab='', yaxt='n',border = NA)
-lines(xs, dnorm(xs,mean = 2, sd = 1),col='red',lwd=3)
+     col = 'grey',  ylab='', yaxt='n', border = NA)
+lines(xs, dnorm(xs, mean = 15, sd = 5), col='red', lwd=3)
 
 hist(thetas$sigma3, freq=F,breaks = 50,main = '', xlab = 'Sigma healthy volunteers', 
      col = 'grey',  ylab='', yaxt='n',border = NA)

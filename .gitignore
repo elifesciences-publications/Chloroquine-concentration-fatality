@@ -3,3 +3,4 @@ Analysis_QRS_cache/*
 *.pdf
 *.swp
 .DS_Store
+~$trial_doses.xlsx
