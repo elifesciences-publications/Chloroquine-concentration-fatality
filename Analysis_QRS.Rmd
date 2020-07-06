@@ -256,7 +256,7 @@ plot(x = log10(pooled_data$CQ_uMol), panel.first = grid(),
      xlab=expression(paste('Whole blood chloroquine concentration (',mu,'mol/L)')), 
      pch = pooled_data$died+1, xlim = c(-1,2))
 axis(1, at = seq(-1, 2, by = 0.5), labels = round(10^seq(-1, 2, by = 0.5),1))
-legend('topleft',  pch = c(1,1,1,2),
+legend('topleft',  pch = c(1,1,1,1,2), cex=1.5,
        legend = c('Healthy volunteers (620 mg base)',
                   'Self-poisoning (Clemessy)',
                   'Self-poisoning (Megarbane)',

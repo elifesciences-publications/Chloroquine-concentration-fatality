@@ -897,7 +897,7 @@ Systematic review of all trials (search data was 10th June 2020, Disease=COVID; 
 ```r
 dat = readxl::read_excel('trial_doses.xlsx')
 
-par(las=1, family = 'serif', bty='n')
+par(las=1, family = 'serif', bty='n', cex.lab=1.2, cex.axis=1.2)
 plot(dat$`Total Duration`,dat$`Total dose (base)`/1000, 
      col = as.numeric(dat$Drug=='HCQ')+1, yaxt='n',
      xlab='Duration of treatment (days)', xaxt='n',
@@ -915,18 +915,20 @@ legend('bottomright', col=c(1,2,1), pch=c(16,16,0),
 axis(2, at = seq(1,13,by=2), tick = T)
 axis(1, at = seq(3, 21, by=3), tick = T)
 
-xs = c(10, 11 , 7, 3)
-ys = c(620*2*10, 620*2 + 310*2*10, 620*2 + 310*2*6, 620*2+310)/1000
+xs = c(10, 10, 3)
+ys = c(620*2*10, 620*2 + 310*2*10, 620*2+310)/1000
 points(xs, ys, pch = 0, cex=1.5)
 
 text(x = 10, y=12.1,labels = 'Borba et al')
 text(x = 14, y=12.6,labels = 'PATCH',col=2)
 
 text(x = 10, y=8.9,labels = 'NCT04351620',col=2)
-text(x = 9, y=7.44+0.4,labels = 'RECOVERY',col=2)
-
-text(x = 12, y=7.44+0.4,labels = 'SOLIDARITY',col=2)
+text(x = 10, y=7.44+0.4,labels = 'RECOVERY & SOLIDARITY',col=2)
 ```
 
 ![](Analysis_death_files/figure-html/ClinicalTrialgov-1.png)<!-- -->
+
+```r
+#text(x = 12, y=7.44+0.4,labels = 'SOLIDARITY',col=2)
+```
 
