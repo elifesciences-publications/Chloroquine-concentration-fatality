@@ -115,7 +115,7 @@ $OMEGA
  0 FIX     ; 7.V4
  0.0111    ; 8.F1
 
-$SIGMA 0.0806       ;Simulating without residual error
+$SIGMA 0      ;Simulating without residual error
 
 $SIM (12345) (54321) ONLYSIM SUBPROBLEMS=1000
 
