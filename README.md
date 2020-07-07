@@ -11,8 +11,8 @@ QRS prolongation is an independent predictor of mortality and is a good way of c
 
 ## Main Result - chloroquine concentration-dependent mortality
 
-Pooled data from self-poisoning cohorts in France (Figure below, top panel) and the estimated relationship between peak chloroquine concentrations and death (bottom panel). In the bottom panel, the vertical redish shaded area is the *danger-zone*: concentrations associated with 1\% mortality. We compared predictions for a set of different chloroquine regimens. The most extreme regimen was the one given in a recent clinical trial in Brazil (Borba et al, MedRxiv). They gave 600mg base twice daily for ten days. This gets a lot of patients into the *danger-zone*.
-In comparison, the regimen recommended by the Chinese authorities (310mg base twice daily) is much safer. Malaria regimens don't kill people (at least not more than the expected background rate of sudden death!) and so are completely fine.
+Pooled data from self-poisoning cohorts in France (Figure below, top panel) and the estimated relationship between peak chloroquine concentrations and death (bottom panel). In the bottom panel, the vertical redish shaded area is the *danger-zone*: concentrations associated with 1\% mortality. We compared predictions for a set of different chloroquine regimens. The most extreme chloroquine regimen was given in a clinical trial in Brazil ([Borba et al, JAMA Open](https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2765499)). The high dose chloroquine arm gave 600 mg base twice daily for ten days. This gets a lot of patients into the *danger-zone*.
+In comparison, the regimen recommended by the Chinese authorities (310 mg base twice daily) is much safer. Malaria regimens don't kill people (at least not more than the expected background rate of sudden death!) and so are completely fine.
 
 ![](Analysis_death_files/figure-html/Fig1-1.png)
 
