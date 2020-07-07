@@ -18,7 +18,7 @@ sessionInfo()
 ```
 
 ```
-## R version 4.0.0 (2020-04-24)
+## R version 4.0.2 (2020-06-22)
 ## Platform: x86_64-apple-darwin17.0 (64-bit)
 ## Running under: macOS Catalina 10.15.2
 ## 
@@ -37,13 +37,13 @@ sessionInfo()
 ## [5] gtools_3.8.2       knitr_1.28        
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] Rcpp_1.0.4.6       pillar_1.4.4       compiler_4.0.0     prettyunits_1.1.1 
-##  [5] tools_4.0.0        digest_0.6.25      pkgbuild_1.0.8     evaluate_0.14     
+##  [1] Rcpp_1.0.4.6       pillar_1.4.4       compiler_4.0.2     prettyunits_1.1.1 
+##  [5] tools_4.0.2        digest_0.6.25      pkgbuild_1.0.8     evaluate_0.14     
 ##  [9] lifecycle_0.2.0    tibble_3.0.1       gtable_0.3.0       pkgconfig_2.0.3   
-## [13] rlang_0.4.6        cli_2.0.2          parallel_4.0.0     yaml_2.2.1        
+## [13] rlang_0.4.6        cli_2.0.2          parallel_4.0.2     yaml_2.2.1        
 ## [17] xfun_0.13          loo_2.2.0          gridExtra_2.3      withr_2.2.0       
-## [21] stringr_1.4.0      dplyr_0.8.5        vctrs_0.3.0        stats4_4.0.0      
-## [25] grid_4.0.0         tidyselect_1.1.0   glue_1.4.1         inline_0.3.15     
+## [21] stringr_1.4.0      dplyr_0.8.5        vctrs_0.3.0        stats4_4.0.2      
+## [25] grid_4.0.2         tidyselect_1.1.0   glue_1.4.1         inline_0.3.15     
 ## [29] R6_2.4.1           processx_3.4.2     fansi_0.4.1        rmarkdown_2.1     
 ## [33] purrr_0.3.4        callr_3.4.3        magrittr_1.5       matrixStats_0.56.0
 ## [37] ps_1.3.3           scales_1.1.1       ellipsis_0.3.1     htmltools_0.4.0   
