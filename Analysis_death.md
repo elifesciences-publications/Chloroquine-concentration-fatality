@@ -18,37 +18,38 @@ sessionInfo()
 ```
 
 ```
-## R version 4.0.0 (2020-04-24)
-## Platform: x86_64-apple-darwin17.0 (64-bit)
-## Running under: macOS Catalina 10.15.2
+## R version 3.6.3 (2020-02-29)
+## Platform: x86_64-w64-mingw32/x64 (64-bit)
+## Running under: Windows 10 x64 (build 17134)
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
-## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## [1] LC_COLLATE=English_United States.1252 
+## [2] LC_CTYPE=English_United States.1252   
+## [3] LC_MONETARY=English_United States.1252
+## [4] LC_NUMERIC=C                          
+## [5] LC_TIME=English_United States.1252    
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-## [1] RColorBrewer_1.1-2 rstan_2.19.3       ggplot2_3.3.0      StanHeaders_2.19.2
-## [5] gtools_3.8.2       knitr_1.28        
+## [1] RColorBrewer_1.1-2   rstan_2.19.3         ggplot2_3.3.0       
+## [4] StanHeaders_2.21.0-1 gtools_3.8.1         knitr_1.28          
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] Rcpp_1.0.4.6       pillar_1.4.4       compiler_4.0.0     prettyunits_1.1.1 
-##  [5] tools_4.0.0        digest_0.6.25      pkgbuild_1.0.8     evaluate_0.14     
-##  [9] lifecycle_0.2.0    tibble_3.0.1       gtable_0.3.0       pkgconfig_2.0.3   
-## [13] rlang_0.4.6        cli_2.0.2          parallel_4.0.0     yaml_2.2.1        
-## [17] xfun_0.13          loo_2.2.0          gridExtra_2.3      withr_2.2.0       
-## [21] stringr_1.4.0      dplyr_0.8.5        vctrs_0.3.0        stats4_4.0.0      
-## [25] grid_4.0.0         tidyselect_1.1.0   glue_1.4.1         inline_0.3.15     
-## [29] R6_2.4.1           processx_3.4.2     fansi_0.4.1        rmarkdown_2.1     
-## [33] purrr_0.3.4        callr_3.4.3        magrittr_1.5       matrixStats_0.56.0
-## [37] ps_1.3.3           scales_1.1.1       ellipsis_0.3.1     htmltools_0.4.0   
-## [41] assertthat_0.2.1   colorspace_1.4-1   stringi_1.4.6      munsell_0.5.0     
-## [45] crayon_1.3.4
+##  [1] Rcpp_1.0.3         pillar_1.4.3       compiler_3.6.3     prettyunits_1.1.1 
+##  [5] tools_3.6.3        digest_0.6.25      pkgbuild_1.0.6     evaluate_0.14     
+##  [9] lifecycle_0.2.0    tibble_2.1.3       gtable_0.3.0       pkgconfig_2.0.3   
+## [13] rlang_0.4.5        cli_2.0.2          parallel_3.6.3     yaml_2.2.1        
+## [17] xfun_0.12          loo_2.2.0          gridExtra_2.3      withr_2.1.2       
+## [21] stringr_1.4.0      dplyr_0.8.5        stats4_3.6.3       grid_3.6.3        
+## [25] tidyselect_1.0.0   glue_1.3.1         inline_0.3.15      R6_2.4.1          
+## [29] processx_3.4.2     fansi_0.4.1        rmarkdown_2.1      purrr_0.3.3       
+## [33] callr_3.4.2        magrittr_1.5       matrixStats_0.56.0 ps_1.3.2          
+## [37] scales_1.1.0       htmltools_0.4.0    assertthat_0.2.1   colorspace_1.4-1  
+## [41] stringi_1.4.6      munsell_0.5.0      crayon_1.3.4
 ```
 
 Important parameters for the analysis/visualisation
@@ -408,19 +409,19 @@ for(i in 1:length(ind_plasma)){
 ```
 
 ```
-## Median cmax for regimen MORU_flat_10D_WB is 5.9 under whole blood model and 6 under plasma model
+## Median cmax for regimen MORU_flat_10D_WB is 6 under whole blood model and 6 under plasma model
 ```
 
 ```
-## Median cmax for regimen MORU_BW10_WB is 6.1 under whole blood model and 6 under plasma model
+## Median cmax for regimen MORU_BW10_WB is 6.2 under whole blood model and 6 under plasma model
 ```
 
 ```
-## Median cmax for regimen MORU_flat7d_WB is 5.1 under whole blood model and 5 under plasma model
+## Median cmax for regimen MORU_flat7d_WB is 5.2 under whole blood model and 6 under plasma model
 ```
 
 ```
-## Median cmax for regimen MORU_BW7_WB is 5.3 under whole blood model and 6 under plasma model
+## Median cmax for regimen MORU_BW7_WB is 5.4 under whole blood model and 6 under plasma model
 ```
 
 ```
@@ -630,13 +631,13 @@ for(i in ind_model){
 ##     99% 
 ## 17.7724 
 ##      99% 
-## 10.36903 
+## 10.03419 
 ##      99% 
-## 10.36903 
+## 10.03419 
 ##      99% 
-## 9.091903 
+## 8.806833 
 ##      99% 
-## 9.091903 
+## 8.806833 
 ##      99% 
 ## 5.324716
 ```
@@ -667,15 +668,15 @@ knitr::kable(round(mean_mortality_per_thousand,1))
                           40     45     50     55    60    65    70    75    80    85    90
 ---------------------  -----  -----  -----  -----  ----  ----  ----  ----  ----  ----  ----
 Brazil_WB               35.1   23.1   15.5   10.9   7.1   4.6   3.3   2.3   1.3   0.9   0.5
-MORU_flat_10D_WB         1.8    0.7    0.3    0.1   0.1   0.0   0.0   0.0   0.0   0.0   0.0
-MORU_BW10_WB             0.0    0.0    0.3    0.1   0.1   0.0   0.0   0.0   0.3   0.1   0.1
-MORU_flat7d_WB           0.5    0.2    0.1    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
+MORU_flat_10D_WB         1.9    0.8    0.3    0.1   0.1   0.0   0.0   0.0   0.0   0.0   0.0
+MORU_BW10_WB             0.0    0.0    0.3    0.1   0.1   0.0   0.0   0.0   0.3   0.2   0.1
+MORU_flat7d_WB           0.6    0.3    0.1    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_BW7_WB              0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 Malaria_flat_WB          0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 Brazil_plasma           29.5   20.9   13.6    9.2   5.4   3.6   2.1   1.2   0.7   0.4   0.2
-MORU_flat_10D_plasma     0.5    0.2    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
+MORU_flat_10D_plasma     0.7    0.2    0.1    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_BW10_plasma         0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.1   0.0   0.0
-MORU_flat7d_plasma       0.2    0.1    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
+MORU_flat7d_plasma       0.3    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 MORU_BW7_plasma          0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 Malaria_flat_plasma      0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
 
@@ -694,16 +695,16 @@ knitr::kable(round(uCI_mortality_per_thousand,1))
                           40     45     50     55     60     65     70    75    80    85    90
 ---------------------  -----  -----  -----  -----  -----  -----  -----  ----  ----  ----  ----
 Brazil_WB               80.1   55.4   40.2   30.8   22.7   16.7   12.9   9.8   6.3   4.5   3.0
-MORU_flat_10D_WB         8.4    4.2    2.0    0.9    0.5    0.2    0.0   0.0   0.0   0.0   0.0
-MORU_BW10_WB             0.0    0.0    1.7    0.9    0.5    0.2    0.0   0.1   1.6   1.0   0.4
-MORU_flat7d_WB           3.3    1.2    0.4    0.1    0.0    0.0    0.0   0.0   0.0   0.0   0.0
-MORU_BW7_WB              0.0    0.0    0.3    0.1    0.0    0.0    0.0   0.0   0.2   0.1   0.0
+MORU_flat_10D_WB         8.7    4.7    2.4    1.0    0.5    0.1    0.1   0.0   0.0   0.0   0.0
+MORU_BW10_WB             0.0    0.0    2.0    1.0    0.5    0.1    0.1   0.0   1.9   1.0   0.6
+MORU_flat7d_WB           3.7    1.7    0.5    0.2    0.0    0.0    0.0   0.0   0.0   0.0   0.0
+MORU_BW7_WB              0.0    0.0    0.3    0.2    0.0    0.0    0.0   0.0   0.4   0.3   0.1
 Malaria_flat_WB          0.0    0.0    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
 Brazil_plasma           68.6   50.6   36.7   28.4   20.7   16.0   11.7   8.1   5.2   3.6   1.9
-MORU_flat_10D_plasma     4.3    1.9    0.4    0.1    0.0    0.0    0.0   0.0   0.0   0.0   0.0
-MORU_BW10_plasma         0.0    0.0    0.3    0.1    0.0    0.0    0.0   0.0   0.5   0.1   0.1
-MORU_flat7d_plasma       1.9    0.5    0.1    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
-MORU_BW7_plasma          0.0    0.0    0.0    0.0    0.0    0.0    0.0   0.0   0.1   0.0   0.0
+MORU_flat_10D_plasma     4.9    1.9    0.5    0.1    0.0    0.0    0.0   0.0   0.0   0.0   0.0
+MORU_BW10_plasma         0.0    0.0    0.4    0.1    0.0    0.0    0.0   0.0   0.5   0.1   0.1
+MORU_flat7d_plasma       2.5    0.5    0.1    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
+MORU_BW7_plasma          0.0    0.0    0.1    0.0    0.0    0.0    0.0   0.0   0.1   0.0   0.0
 Malaria_flat_plasma      0.2    0.1    0.0    0.0    0.0    0.0    0.0   0.0   0.0   0.0   0.0
 
 ```r
@@ -748,16 +749,16 @@ knitr::kable(round(100*apply(Cmax_pop[,,,1] > 10, c(1,2), mean),1))
                            40      45     50     55     60     65     70     75     80     85     90
 ---------------------  ------  ------  -----  -----  -----  -----  -----  -----  -----  -----  -----
 Brazil_WB                99.9    98.1   96.1   91.5   83.3   74.3   61.7   51.1   37.1   27.6   20.4
-MORU_flat_10D_WB         46.7    26.9   14.3    7.0    3.7    1.4    0.2    0.4    0.3    0.0    0.0
-MORU_BW10_WB              0.1     0.0   11.7    7.0    3.7    1.4    0.4    0.5   10.9    7.6    3.7
-MORU_flat7d_WB           22.1     8.9    3.0    0.8    0.6    0.3    0.0    0.0    0.0    0.0    0.0
-MORU_BW7_WB               0.0     0.0    2.0    0.8    0.6    0.3    0.0    0.0    1.9    1.0    0.1
+MORU_flat_10D_WB         47.9    29.3   16.7    8.1    4.1    1.1    0.5    0.2    0.2    0.1    0.0
+MORU_BW10_WB              0.0     0.0   14.3    8.1    4.1    1.1    0.7    0.2   13.4    7.3    5.1
+MORU_flat7d_WB           25.0    12.1    4.0    1.5    0.6    0.1    0.2    0.1    0.0    0.0    0.0
+MORU_BW7_WB               0.0     0.0    2.8    1.5    0.6    0.1    0.2    0.1    3.0    2.1    0.7
 Malaria_flat_WB           0.2     0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0
 Brazil_plasma           100.0   100.0   99.6   98.0   91.9   83.0   71.2   55.9   37.4   28.3   16.0
-MORU_flat_10D_plasma     32.1    15.6    3.9    0.8    0.1    0.0    0.0    0.0    0.0    0.0    0.0
-MORU_BW10_plasma          0.0     0.0    3.0    0.8    0.1    0.0    0.0    0.0    4.7    1.0    0.5
-MORU_flat7d_plasma       16.4     4.2    0.7    0.3    0.0    0.0    0.0    0.0    0.0    0.0    0.0
-MORU_BW7_plasma           0.0     0.0    0.6    0.3    0.0    0.0    0.0    0.0    0.8    0.1    0.2
+MORU_flat_10D_plasma     34.8    15.6    4.6    0.9    0.1    0.1    0.0    0.0    0.0    0.0    0.0
+MORU_BW10_plasma          0.0     0.0    3.8    0.9    0.1    0.1    0.0    0.0    4.7    1.6    0.7
+MORU_flat7d_plasma       19.9     4.8    1.0    0.0    0.1    0.0    0.0    0.0    0.0    0.0    0.0
+MORU_BW7_plasma           0.0     0.0    0.5    0.0    0.1    0.0    0.0    0.0    0.7    0.4    0.1
 Malaria_flat_plasma       1.4     0.3    0.1    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0
 
 
@@ -866,14 +867,14 @@ for(i in ind_model){
 ```
 ##      99% 
 ## 15.93706 
+##     99% 
+## 8.93282 
+##     99% 
+## 8.93282 
 ##      99% 
-## 8.292776 
+## 8.131408 
 ##      99% 
-## 8.292776 
-##      99% 
-## 8.145144 
-##      99% 
-## 8.145144 
+## 8.131408 
 ##      99% 
 ## 6.457228
 ```

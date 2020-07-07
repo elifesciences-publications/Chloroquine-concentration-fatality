@@ -15,19 +15,19 @@ COMP=(3)
 COMP=(4)
 
 $PK
-TVCL  = THETA(1)*((WGT/52)**0.75)
+TVCL  = THETA(1)*((WGT/70)**0.75)
 CL  = TVCL* EXP(ETA(1))
 
-TVV2  = THETA(2)*((WGT/52)**1)
+TVV2  = THETA(2)*((WGT/70)**1)
 V2  = TVV2* EXP(ETA(2))
 
 TVMT  = THETA(3)
 MT  = TVMT* EXP(ETA(3))
 
-TVQ   = THETA(4)*((WGT/52)**0.75)
+TVQ   = THETA(4)*((WGT/70)**0.75)
 Q   = TVQ * EXP(ETA(4))  
 
-TVV3  = THETA(5)*((WGT/52)**1)
+TVV3  = THETA(5)*((WGT/70)**1)
 V3  = TVV3* EXP(ETA(5))
 
 TVF1  = THETA(6)
@@ -82,11 +82,11 @@ CMAX1  = COM(1)*1000 / 319.872            ;uM
 CMAX2  = COM(2)*1000 / 319.872            ;uM
 
 $THETA
- 6.13  ; 1.CL
- 468   ; 2.V2
+ 7.66  ; 1.CL
+ 630   ; 2.V2
  0.953 ; 3.MT
- 37.7  ; 4.Q
- 1600  ; 5.V3
+ 47.1  ; 4.Q
+ 2150  ; 5.V3
  1     ; 6.F1
 
 $OMEGA
@@ -98,7 +98,7 @@ $OMEGA
  0.0369 ; 6.F1
 
 $SIGMA
- 0     ;Simulation without residual error
+ 0.000      ;Simulation without residual error
 
 $SIM (12345) (54321) ONLYSIM SUBPROBLEMS=1000
 
