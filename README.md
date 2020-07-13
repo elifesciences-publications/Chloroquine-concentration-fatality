@@ -1,6 +1,6 @@
 # Chloroquine-concentration-fatality
 
-This code underlies the paper "Concentration-dependent mortality of chloroquine in overdose" ([currently a preprint on medRxiv](https://www.medrxiv.org/content/10.1101/2020.04.24.20078303v2), and under review at eLife).
+This code underlies the paper "Concentration-dependent mortality of chloroquine in overdose" [published in eLife](https://elifesciences.org/articles/58631).
 
 The code does three things, bundled up as an RMarkdown file:
 
