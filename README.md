@@ -1,3 +1,5 @@
+This code is associated with the paper from Watson et al., "Concentration-dependent mortality of
+chloroquine in overdose". eLife, 2020. http://doi.org/10.7554/eLife.58631
 # Chloroquine-concentration-fatality
 
 This code underlies the paper "Concentration-dependent mortality of chloroquine in overdose" [published in eLife](https://elifesciences.org/articles/58631).
